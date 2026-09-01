@@ -1,0 +1,8 @@
+# Build artifacts / local cruft
+__pycache__/
+*.pyc
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.tmp
