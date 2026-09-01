@@ -2,6 +2,7 @@ import importlib.util, html, json, os, re
 
 SRC = os.path.dirname(os.path.abspath(__file__))
 DOMAIN_DIR = os.path.join(SRC, "domains")
+STUDY_AID_PATH = os.path.join(SRC, "study-aids", "identity-governance-monitoring.md")
 REPO_ROOT = os.path.dirname(SRC)
 OUT_PATH = os.path.join(REPO_ROOT, "index.html")
 
@@ -25,6 +26,154 @@ E = html.escape
 
 def code(s):
     return E(s.strip("\n").rstrip())
+
+def slug(text):
+    return re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")
+
+def inline_md(text):
+    placeholders = []
+
+    def stash_code(match):
+        placeholders.append(f"<code>{E(match.group(1))}</code>")
+        return f"\x00{len(placeholders) - 1}\x00"
+
+    rendered = re.sub(r"`([^`]+)`", stash_code, text)
+    rendered = E(rendered)
+    rendered = re.sub(
+        r"\[([^\]]+)\]\((https?://[^)]+)\)",
+        r'<a href="\2" target="_blank" rel="noreferrer">\1</a>',
+        rendered,
+    )
+    rendered = re.sub(r"\*\*([^*]+)\*\*", r"<strong>\1</strong>", rendered)
+    rendered = re.sub(r"\x00(\d+)\x00", lambda m: placeholders[int(m.group(1))], rendered)
+    return rendered
+
+def markdown_blocks(markdown):
+    lines = markdown.strip().splitlines()
+    output, i = [], 0
+
+    while i < len(lines):
+        line = lines[i].rstrip()
+        if not line:
+            i += 1
+            continue
+
+        if line.startswith("```"):
+            language = line[3:].strip()
+            block = []
+            i += 1
+            while i < len(lines) and not lines[i].startswith("```"):
+                block.append(lines[i])
+                i += 1
+            i += 1
+            lang_attr = f' data-language="{E(language)}"' if language else ""
+            output.append(f'<pre class="study-code"{lang_attr}><code>{E(chr(10).join(block))}</code></pre>')
+            continue
+
+        if line.startswith("|") and i + 1 < len(lines) and re.match(r"^\s*\|?\s*:?-+", lines[i + 1]):
+            rows = []
+            while i < len(lines) and lines[i].lstrip().startswith("|"):
+                rows.append([cell.strip() for cell in lines[i].strip().strip("|").split("|")])
+                i += 1
+            headers = rows[0]
+            body_rows = rows[2:]
+            table = ["<div class=\"study-table-wrap\"><table><thead><tr>"]
+            table.extend(f"<th>{inline_md(cell)}</th>" for cell in headers)
+            table.append("</tr></thead><tbody>")
+            for row in body_rows:
+                table.append("<tr>")
+                table.extend(f"<td>{inline_md(cell)}</td>" for cell in row)
+                table.append("</tr>")
+            table.append("</tbody></table></div>")
+            output.append("".join(table))
+            continue
+
+        if line.startswith(">"):
+            quote = []
+            while i < len(lines) and lines[i].startswith(">"):
+                quote.append(lines[i][1:].strip())
+                i += 1
+            output.append(f'<blockquote class="study-anchor">{inline_md(" ".join(quote))}</blockquote>')
+            continue
+
+        list_match = re.match(r"^(\s*)([-*]|\d+\.)\s+(.+)", line)
+        if list_match:
+            ordered = list_match.group(2).endswith(".")
+            tag = "ol" if ordered else "ul"
+            items = []
+            while i < len(lines):
+                item = re.match(r"^\s*([-*]|\d+\.)\s+(.+)", lines[i])
+                if not item or item.group(1).endswith(".") != ordered:
+                    break
+                items.append(f"<li>{inline_md(item.group(2))}</li>")
+                i += 1
+            output.append(f'<{tag} class="study-list">{"".join(items)}</{tag}>')
+            continue
+
+        heading = re.match(r"^(#{2,4})\s+(.+)", line)
+        if heading:
+            level = len(heading.group(1)) + 1
+            output.append(f"<h{level}>{inline_md(heading.group(2))}</h{level}>")
+            i += 1
+            continue
+
+        paragraph = [line]
+        i += 1
+        while i < len(lines) and lines[i].strip():
+            next_line = lines[i]
+            if (
+                next_line.startswith(("```", ">", "|", "##"))
+                or re.match(r"^\s*([-*]|\d+\.)\s+", next_line)
+            ):
+                break
+            paragraph.append(next_line.strip())
+            i += 1
+        output.append(f"<p>{inline_md(' '.join(paragraph))}</p>")
+
+    return "".join(output)
+
+def load_study_aid():
+    with open(STUDY_AID_PATH, encoding="utf-8") as source:
+        markdown = source.read().replace("\r\n", "\n")
+
+    title_match = re.match(r"#\s+(.+)\n", markdown)
+    matches = list(re.finditer(r"(?m)^##\s+(.+)$", markdown))
+    intro_end = matches[0].start() if matches else len(markdown)
+    intro = markdown[title_match.end():intro_end] if title_match else markdown[:intro_end]
+    sections = []
+    for index, match in enumerate(matches):
+        end = matches[index + 1].start() if index + 1 < len(matches) else len(markdown)
+        sections.append((match.group(1).strip(), markdown[match.end():end].strip()))
+
+    section_map = dict(sections)
+    questions = []
+    for line in section_map["100 true/false questions"].splitlines():
+        match = re.match(r"^(\d+)\.\s+(.+)$", line)
+        if match:
+            questions.append((int(match.group(1)), match.group(2)))
+
+    answers = {}
+    for line in section_map["Answer key"].splitlines():
+        match = re.match(r"^(\d+)\.\s+\*\*([TF])\*\*\s+-\s+(.+)$", line)
+        if match:
+            answers[int(match.group(1))] = (match.group(2), match.group(3))
+
+    if len(questions) != 100 or len(answers) != 100:
+        raise ValueError("The identity study aid must contain exactly 100 questions and answers")
+
+    notes = [
+        (name, body)
+        for name, body in sections
+        if name not in {"100 true/false questions", "Answer key", "Official Microsoft Learn links"}
+    ]
+    return {
+        "title": title_match.group(1) if title_match else "Identity, governance, and monitoring study aid",
+        "intro": intro,
+        "notes": notes,
+        "questions": questions,
+        "answers": answers,
+        "sources": section_map["Official Microsoft Learn links"],
+    }
 
 def steps_html(steps):
     out, open_ol, n = [], False, 0
@@ -104,6 +253,61 @@ def lab_html(lab, dkey):
   </div>
 </article>'''
 
+STUDY = load_study_aid()
+study_topics = []
+study_topic_links = []
+for name, body in STUDY["notes"]:
+    topic_id = f"study-{slug(name)}"
+    study_topic_links.append(f'<a href="#{topic_id}">{E(name)}</a>')
+    study_topics.append(
+        f'<section class="study-topic" id="{topic_id}" data-search="{E((name + " " + body).lower())}">'
+        f'<h3>{E(name)}</h3>{markdown_blocks(body)}</section>'
+    )
+
+quiz_items = []
+for number, question in STUDY["questions"]:
+    answer, explanation = STUDY["answers"][number]
+    answer_word = "True" if answer == "T" else "False"
+    search_text = f"{number} {question} {answer_word} {explanation}".lower()
+    quiz_items.append(f'''
+<article class="quiz-item" data-answer="{answer}" data-search="{E(search_text)}">
+  <h4><span>{number}</span>{inline_md(question)}</h4>
+  <div class="quiz-choices" role="group" aria-label="Question {number}: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: {answer_word}</strong>
+    <span class="quiz-explanation">{inline_md(explanation)}</span>
+  </div>
+</article>''')
+
+STUDY_HTML = f'''
+<section class="study-aid" id="study-aid">
+  <div class="study-hero">
+    <p class="eyebrow">Domain 4 companion study aid</p>
+    <h2>{E(STUDY["title"])}</h2>
+    {markdown_blocks(STUDY["intro"])}
+    <div class="study-jump">{"".join(study_topic_links)}<a href="#study-quiz">100-question quiz</a><a href="#study-sources">Official sources</a></div>
+  </div>
+  <div class="study-tools">
+    <input id="study-q" type="search" placeholder="Search the study aid and quiz" autocomplete="off">
+    <button id="show-answers" class="btn" type="button">Show all answers</button>
+    <button id="reset-quiz" class="btn" type="button">Reset quiz</button>
+  </div>
+  <div class="study-notes">{"".join(study_topics)}</div>
+  <section class="study-quiz" id="study-quiz">
+    <div class="dom-head"><span class="dom-num">100</span><div><h2>100 true/false questions</h2><p class="dom-w">Choose an answer to reveal the explanation</p></div></div>
+    <div class="quiz-progress" id="quiz-progress" aria-live="polite">0 of 100 answered</div>
+    <div class="quiz-list">{"".join(quiz_items)}</div>
+    <div class="empty" id="study-empty"><h3>No study content matches that search</h3><p>Try a broader identity, governance, monitoring, or KQL term.</p></div>
+  </section>
+  <section class="study-sources study-topic" id="study-sources">
+    <h3>Official Microsoft Learn links</h3>
+    {markdown_blocks(STUDY["sources"])}
+  </section>
+</section>'''
+
 nav, sections, total = [], [], 0
 for i, d in enumerate(DOMAINS, 1):
     total += len(d["labs"])
@@ -120,12 +324,70 @@ for i, d in enumerate(DOMAINS, 1):
         + "".join(lab_html(l, d["key"]) for l in d["labs"]) + "</section>"
     )
 
+nav.append(
+    '<a class="navbtn study-nav" href="#study-aid">'
+    '<span class="navnum">+</span>'
+    '<span class="navtxt"><b>Identity, governance &amp; monitoring</b>'
+    '<i>Cheat sheet &middot; 100 explained questions</i></span></a>'
+)
+
 CSS = """
-:root{color-scheme:light;--cp-bg:#f7f4ef;--cp-bg-elevated:#fcfbf8;--cp-surface:#ffffff;--cp-surface-soft:#f5f5f5;--cp-border:#dedede;--cp-border-strong:#919191;--cp-text:#242424;--cp-text-muted:#5c5c5c;--cp-text-soft:#6f6f6f;--cp-accent:#6d28d9;--cp-accent-hover:#5b21b6;--cp-accent-soft:rgba(109,40,217,.08);--cp-accent-fg:#ffffff;--cp-success:#16a34a;--cp-danger:#dc2626;--cp-warning:#d97706;--cp-link:#0078d4;--cp-shadow:0 18px 48px rgba(0,0,0,.12);--cp-overlay:rgba(255,255,255,.8);--cp-panel:rgba(255,255,255,.86);--cp-panel-strong:rgba(255,255,255,.96);--cp-sheen:rgba(255,255,255,.55);--cp-highlight:rgba(109,40,217,.12)}
-html[data-theme="dark"]{color-scheme:dark;--cp-bg:#3d3b3a;--cp-bg-elevated:#343231;--cp-surface:#292929;--cp-surface-soft:#2e2e2e;--cp-border:#474747;--cp-border-strong:#5f5f5f;--cp-text:#dedede;--cp-text-muted:#919191;--cp-text-soft:#b0b0b0;--cp-accent:#c4b5fd;--cp-accent-hover:#a78bfa;--cp-accent-soft:rgba(196,181,253,.14);--cp-accent-fg:#1a1a1a;--cp-success:#4ade80;--cp-danger:#f87171;--cp-warning:#fbbf24;--cp-link:#4da6ff;--cp-shadow:0 18px 48px rgba(0,0,0,.32);--cp-overlay:rgba(41,41,41,.88);--cp-panel:rgba(41,41,41,.72);--cp-panel-strong:rgba(41,41,41,.96);--cp-sheen:rgba(255,255,255,.04);--cp-highlight:rgba(196,181,253,.12)}
+:root {
+  color-scheme: light;
+  --cp-bg: #f7f4ef;
+  --cp-bg-elevated: #fcfbf8;
+  --cp-surface: #ffffff;
+  --cp-surface-soft: #f5f5f5;
+  --cp-border: #dedede;
+  --cp-border-strong: #919191;
+  --cp-text: #242424;
+  --cp-text-muted: #5c5c5c;
+  --cp-text-soft: #6f6f6f;
+  --cp-accent: #b11f4b;
+  --cp-accent-hover: #9a1a41;
+  --cp-accent-soft: rgba(177, 31, 75, 0.08);
+  --cp-accent-fg: #ffffff;
+  --cp-success: #16a34a;
+  --cp-danger: #dc2626;
+  --cp-warning: #f59e0b;
+  --cp-link: #0078d4;
+  --cp-shadow: 0 18px 48px rgba(0, 0, 0, 0.12);
+  --cp-overlay: rgba(255, 255, 255, 0.8);
+  --cp-panel: rgba(255, 255, 255, 0.86);
+  --cp-panel-strong: rgba(255, 255, 255, 0.96);
+  --cp-sheen: rgba(255, 255, 255, 0.55);
+  --cp-highlight: rgba(177, 31, 75, 0.12);
+}
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --cp-bg: #3d3b3a;
+  --cp-bg-elevated: #343231;
+  --cp-surface: #292929;
+  --cp-surface-soft: #2e2e2e;
+  --cp-border: #474747;
+  --cp-border-strong: #5f5f5f;
+  --cp-text: #dedede;
+  --cp-text-muted: #919191;
+  --cp-text-soft: #b0b0b0;
+  --cp-accent: #fd8ea1;
+  --cp-accent-hover: #fb7b91;
+  --cp-accent-soft: rgba(253, 142, 161, 0.14);
+  --cp-accent-fg: #1a1a1a;
+  --cp-success: #4ade80;
+  --cp-danger: #f87171;
+  --cp-warning: #fbbf24;
+  --cp-link: #4da6ff;
+  --cp-shadow: 0 18px 48px rgba(0, 0, 0, 0.32);
+  --cp-overlay: rgba(41, 41, 41, 0.88);
+  --cp-panel: rgba(41, 41, 41, 0.72);
+  --cp-panel-strong: rgba(41, 41, 41, 0.96);
+  --cp-sheen: rgba(255, 255, 255, 0.04);
+  --cp-highlight: rgba(253, 142, 161, 0.12);
+}
 *{box-sizing:border-box}
 body{margin:0;background:var(--cp-bg);color:var(--cp-text);font-family:"Segoe UI",Aptos,Calibri,-apple-system,BlinkMacSystemFont,sans-serif;font-size:15px;line-height:1.6}
 code,pre,kbd{font-family:Consolas,"Courier New",Courier,monospace}
+a{color:var(--cp-link)}
 .wrap{max-width:1180px;margin:0 auto;padding:0 20px 80px}
 header.top{background:var(--cp-bg-elevated);border-bottom:1px solid var(--cp-border);padding:34px 0 26px;margin-bottom:26px}
 header.top .wrap{padding-bottom:0}
@@ -145,8 +407,11 @@ h1{margin:0 0 10px;font-size:31px;line-height:1.2;font-weight:650;letter-spacing
 .seg button.on{background:var(--cp-accent);color:var(--cp-accent-fg);font-weight:600}
 .btn{background:var(--cp-surface);border:1px solid var(--cp-border);color:var(--cp-text-muted);border-radius:.625rem;padding:10px 14px;font-family:inherit;font-size:13.5px;cursor:pointer;white-space:nowrap}
 .btn:hover{border-color:var(--cp-accent);color:var(--cp-accent)}
+.btn.primary{background:var(--cp-accent);border-color:var(--cp-accent);color:var(--cp-accent-fg);text-decoration:none}
+.btn.primary:hover{background:var(--cp-accent-hover);color:var(--cp-accent-fg)}
 nav.doms{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:10px;margin:0 0 30px}
 .navbtn{display:flex;gap:11px;align-items:center;text-align:left;background:var(--cp-surface);border:1px solid var(--cp-border);border-radius:16px;padding:13px 15px;cursor:pointer;color:var(--cp-text);font-family:inherit;box-shadow:0 0 2px rgba(0,0,0,.12),0 1px 2px rgba(0,0,0,.14)}
+.navbtn.study-nav{text-decoration:none}
 .navbtn:hover{border-color:var(--cp-accent)}
 .navbtn.on{border-color:var(--cp-accent);background:var(--cp-accent-soft)}
 .navnum{flex:0 0 30px;height:30px;border-radius:50%;background:var(--cp-accent);color:var(--cp-accent-fg);display:grid;place-items:center;font-weight:700;font-size:14px}
@@ -210,12 +475,54 @@ details.cleanup summary::-webkit-details-marker{display:none}
 details.cleanup summary::before{content:"\\25B8 ";color:var(--cp-accent)}
 details.cleanup[open] summary::before{content:"\\25BE "}
 details.cleanup .codewrap{margin:0 12px 12px}
+.study-aid{margin:56px 0 44px;scroll-margin-top:16px}
+.study-hero{background:var(--cp-surface);border:1px solid var(--cp-border);border-top:4px solid var(--cp-accent);border-radius:16px;padding:24px;box-shadow:0 0 2px rgba(0,0,0,.12),0 1px 2px rgba(0,0,0,.14)}
+.study-hero h2{margin:0 0 12px;font-size:26px;line-height:1.25}
+.study-hero p{color:var(--cp-text-muted);max-width:92ch}
+.study-anchor{margin:16px 0;padding:13px 16px;background:var(--cp-accent-soft);border-left:3px solid var(--cp-accent);border-radius:.625rem;color:var(--cp-text)}
+.study-jump{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px}
+.study-jump a{border:1px solid var(--cp-border);border-radius:.625rem;background:var(--cp-surface-soft);color:var(--cp-text);padding:6px 10px;text-decoration:none;font-size:12.5px}
+.study-jump a:hover{border-color:var(--cp-accent);color:var(--cp-accent)}
+.study-tools{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:16px 0 22px}
+#study-q{flex:1 1 360px;min-width:240px;background:var(--cp-surface);border:1px solid var(--cp-border);color:var(--cp-text);border-radius:.625rem;padding:10px 14px;font-family:inherit;font-size:14.5px;outline:none}
+#study-q:focus{border-color:var(--cp-accent)}
+.study-notes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-items:start}
+.study-topic{background:var(--cp-surface);border:1px solid var(--cp-border);border-radius:16px;padding:20px;scroll-margin-top:16px;box-shadow:0 0 2px rgba(0,0,0,.12),0 1px 2px rgba(0,0,0,.14)}
+.study-topic h3{margin:0 0 12px;font-size:19px;line-height:1.3;color:var(--cp-accent)}
+.study-topic h4,.study-topic h5{margin:18px 0 8px}
+.study-topic p{margin:8px 0;color:var(--cp-text-muted)}
+.study-list{margin:8px 0;padding-left:22px}
+.study-list li{margin-bottom:6px}
+.study-table-wrap{overflow-x:auto;margin:14px 0}
+.study-table-wrap table{width:100%;border-collapse:collapse;font-size:13px}
+.study-table-wrap th,.study-table-wrap td{padding:9px 10px;border:1px solid var(--cp-border);text-align:left;vertical-align:top}
+.study-table-wrap th{background:var(--cp-surface-soft);color:var(--cp-text);font-weight:650}
+.study-code{background:var(--cp-bg-elevated);border:1px solid var(--cp-border);border-radius:.625rem;padding:14px 16px;overflow-x:auto;font-size:12.9px;line-height:1.62}
+.study-quiz{margin-top:44px;scroll-margin-top:16px}
+.study-quiz .dom-num{flex-basis:48px;border-radius:.625rem}
+.quiz-progress{margin:-2px 0 14px;color:var(--cp-text-muted);font-size:13px}
+.quiz-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.quiz-item{background:var(--cp-surface);border:1px solid var(--cp-border);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:12px;box-shadow:0 0 2px rgba(0,0,0,.12),0 1px 2px rgba(0,0,0,.14)}
+.quiz-item h4{display:flex;gap:10px;align-items:flex-start;margin:0;font-size:14px;line-height:1.5;font-weight:600}
+.quiz-item h4 span{flex:0 0 28px;height:28px;border-radius:50%;background:var(--cp-accent-soft);color:var(--cp-accent);display:grid;place-items:center;font-size:12px}
+.quiz-choices{display:flex;gap:8px}
+.quiz-choice{flex:1;background:var(--cp-surface-soft);border:1px solid var(--cp-border);border-radius:.625rem;color:var(--cp-text);padding:8px 12px;font-family:inherit;cursor:pointer}
+.quiz-choice:hover{border-color:var(--cp-accent)}
+.quiz-choice.correct{border-color:var(--cp-success);color:var(--cp-success)}
+.quiz-choice.wrong{border-color:var(--cp-danger);color:var(--cp-danger)}
+.quiz-feedback{border-top:1px solid var(--cp-border);padding-top:10px;font-size:13px}
+.quiz-feedback strong{display:block;color:var(--cp-accent);margin-bottom:3px}
+.quiz-feedback span{color:var(--cp-text-muted)}
+.study-sources{margin-top:44px}
+.study-sources .study-list{columns:2;column-gap:30px}
+.study-sources .study-list li{break-inside:avoid}
 .empty{display:none;text-align:center;padding:50px 20px;color:var(--cp-text-muted)}
 footer{border-top:1px solid var(--cp-border);margin-top:36px;padding-top:20px;color:var(--cp-text-muted);font-size:12.5px}
 ::-webkit-scrollbar{height:10px;width:10px}
 ::-webkit-scrollbar-track{background:var(--cp-bg)}
 ::-webkit-scrollbar-thumb{background:var(--cp-border-strong);border-radius:5px}
-@media print{.controls,nav.doms,.tabs,.copy,header.top .stats{display:none}.lab-body{display:block!important}.pane{display:block!important}.lab{break-inside:avoid}}
+@media print{.controls,nav.doms,.tabs,.copy,.study-tools,.quiz-choices,header.top .stats{display:none}.lab-body,.quiz-feedback{display:block!important}.pane{display:block!important}.lab,.quiz-item,.study-topic{break-inside:avoid}}
+@media(max-width:800px){.study-notes,.quiz-list{grid-template-columns:1fr}.study-sources .study-list{columns:1}}
 @media(max-width:720px){.lab-head{flex-wrap:wrap}.meta{width:100%;justify-content:flex-start}h1{font-size:25px}}
 """
 
@@ -291,6 +598,47 @@ document.getElementById('expand').addEventListener('click',function(){
   document.querySelectorAll('.lab').forEach(function(l){ l.classList.toggle('open', !any); });
   this.textContent = any ? 'Expand all' : 'Collapse all';
 });
+function updateQuizProgress(){
+  var answered=document.querySelectorAll('.quiz-item[data-answered="true"]').length;
+  document.getElementById('quiz-progress').textContent=answered+' of 100 answered';
+}
+function revealAnswer(item, choice){
+  var answer=item.dataset.answer;
+  item.querySelectorAll('.quiz-choice').forEach(function(button){
+    button.classList.remove('correct','wrong');
+    if(button.dataset.choice===answer){ button.classList.add('correct'); }
+    if(choice && button.dataset.choice===choice && choice!==answer){ button.classList.add('wrong'); }
+  });
+  item.querySelector('.quiz-feedback').hidden=false;
+  if(choice){ item.dataset.answered='true'; }
+}
+document.querySelectorAll('.quiz-choice').forEach(function(button){
+  button.addEventListener('click',function(){
+    revealAnswer(button.closest('.quiz-item'),button.dataset.choice);
+    updateQuizProgress();
+  });
+});
+document.getElementById('show-answers').addEventListener('click',function(){
+  document.querySelectorAll('.quiz-item').forEach(function(item){ revealAnswer(item); });
+});
+document.getElementById('reset-quiz').addEventListener('click',function(){
+  document.querySelectorAll('.quiz-item').forEach(function(item){
+    delete item.dataset.answered;
+    item.querySelectorAll('.quiz-choice').forEach(function(button){ button.classList.remove('correct','wrong'); });
+    item.querySelector('.quiz-feedback').hidden=true;
+  });
+  updateQuizProgress();
+});
+document.getElementById('study-q').addEventListener('input',function(e){
+  var q=e.target.value.toLowerCase().trim(), shown=0;
+  document.querySelectorAll('.study-topic,.quiz-item').forEach(function(item){
+    var searchable=item.dataset.search || item.textContent.toLowerCase();
+    var visible=!q || searchable.indexOf(q)>-1;
+    item.style.display=visible?'':'none';
+    if(visible){ shown++; }
+  });
+  document.getElementById('study-empty').style.display=shown?'none':'block';
+});
 (function(){
   var btn=document.getElementById('theme'), root=document.documentElement;
   function label(){ btn.innerHTML = root.getAttribute('data-theme')==='dark' ? '\\u263C Light' : '\\u263E Dark'; }
@@ -309,17 +657,13 @@ HTML = f"""<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>AI-200 Hands-On Lab Guide</title>
-<meta name="description" content="{total} hands-on AI-200 (Azure AI Cloud Developer Associate) labs covering every exam domain, each with Azure Portal, Azure CLI and Python/SDK steps plus what the exam is actually testing.">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%236d28d9'/%3E%3Ctext x='16' y='22' font-family='Segoe UI,sans-serif' font-size='15' font-weight='700' fill='%23fff' text-anchor='middle'%3EAI%3C/text%3E%3C/svg%3E">
+<title>AI-200 Hands-On Lab &amp; Study Guide</title>
+<meta name="description" content="{total} hands-on AI-200 labs covering every exam domain plus an identity, governance, and monitoring study aid with 100 explained true/false questions.">
 <script>
   (() => {{
     const param = new URLSearchParams(window.location.search).get("scoutTheme");
-    let stored = null;
-    try {{ stored = localStorage.getItem("ai200Theme"); }} catch (e) {{}}
-    // Dark by design. OS preference is deliberately not consulted; visitors who
-    // want light can flip it with the toggle and that choice is remembered.
-    const theme = param || stored || "dark";
+    const theme =
+      param || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
     document.documentElement.setAttribute("data-theme", theme);
   }})();
 </script>
@@ -328,13 +672,13 @@ HTML = f"""<!DOCTYPE html>
 <body>
 <header class="top"><div class="wrap">
   <p class="eyebrow">Microsoft Certified: Azure AI Cloud Developer Associate</p>
-  <h1>AI-200 Hands-On Lab Guide</h1>
-  <p class="sub-lede">{total} step-by-step labs covering every AI-200 exam domain, each shown as an <b>Azure Portal</b> click-path with the equivalent <b>Azure CLI</b> commands and <b>Python / SDK</b> code. Every lab opens with a <b>&ldquo;What the exam is testing&rdquo;</b> callout and closes with the traps and distractors that show up in the real question bank.</p>
+  <h1>AI-200 Hands-On Lab &amp; Study Guide</h1>
+  <p class="sub-lede">{total} step-by-step labs covering every AI-200 exam domain, plus a focused identity, governance, and monitoring cheat sheet with 100 explained true/false questions. Labs include <b>Azure Portal</b>, <b>Azure CLI</b>, and <b>Python / SDK</b> paths with exam callouts and traps.</p>
   <div class="stats">
     <div class="stat"><b>{total}</b><span>Labs</span></div>
     <div class="stat"><b>4</b><span>Domains</span></div>
     <div class="stat"><b>3</b><span>Methods each</span></div>
-    <div class="stat"><b>Python</b><span>SDK-first</span></div>
+    <div class="stat"><b>100</b><span>Study questions</span></div>
   </div>
   <div class="controls">
     <input id="q" type="search" placeholder="Search labs, commands, exam concepts (e.g. &quot;pgvector&quot;, &quot;change feed&quot;, &quot;KEDA&quot;, &quot;dead-letter&quot;)" autocomplete="off">
@@ -345,14 +689,16 @@ HTML = f"""<!DOCTYPE html>
       <button data-level="advanced" type="button">Advanced</button>
     </div>
     <button id="expand" class="btn" type="button">Expand all</button>
+    <a class="btn primary" href="#study-aid">Identity study aid</a>
     <button id="theme" class="btn" type="button" title="Toggle light / dark theme" aria-label="Toggle light or dark theme">&#9788; Light</button>
   </div>
 </div></header>
 
 <div class="wrap">
-  <nav class="doms">{"".join(nav)}</nav>
+  <nav class="doms" aria-label="Guide sections">{"".join(nav)}</nav>
   {"".join(sections)}
   <div class="empty" id="empty"><h3>No labs match that filter</h3><p>Try a different search term or clear the level filter.</p></div>
+{STUDY_HTML}
   <footer>
     <p><b>How to use this guide.</b> AI-200 is a <i>developer</i> exam &mdash; the question bank tests SDK calls, trigger/binding names, connection patterns and CLI flags directly. Read the exam callout <i>before</i> the steps, work the Portal path first for orientation, then rebuild it with the CLI and Python panes so the SDK method names and parameters stick. Read the traps <i>after</i>.</p>
     <p><b>Cost warning.</b> AKS clusters, Container Apps environments, Cosmos DB throughput, Azure Database for PostgreSQL flexible servers and Managed Redis bill continuously whether or not you send traffic. Run the cleanup block at the end of each lab, and prefer deleting the whole resource group when you are done.</p>

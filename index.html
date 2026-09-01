@@ -3,26 +3,73 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>AI-200 Hands-On Lab Guide</title>
-<meta name="description" content="23 hands-on AI-200 (Azure AI Cloud Developer Associate) labs covering every exam domain, each with Azure Portal, Azure CLI and Python/SDK steps plus what the exam is actually testing.">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%236d28d9'/%3E%3Ctext x='16' y='22' font-family='Segoe UI,sans-serif' font-size='15' font-weight='700' fill='%23fff' text-anchor='middle'%3EAI%3C/text%3E%3C/svg%3E">
+<title>AI-200 Hands-On Lab &amp; Study Guide</title>
+<meta name="description" content="23 hands-on AI-200 labs covering every exam domain plus an identity, governance, and monitoring study aid with 100 explained true/false questions.">
 <script>
   (() => {
     const param = new URLSearchParams(window.location.search).get("scoutTheme");
-    let stored = null;
-    try { stored = localStorage.getItem("ai200Theme"); } catch (e) {}
-    // Dark by design. OS preference is deliberately not consulted; visitors who
-    // want light can flip it with the toggle and that choice is remembered.
-    const theme = param || stored || "dark";
+    const theme =
+      param || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
     document.documentElement.setAttribute("data-theme", theme);
   })();
 </script>
 <style>
-:root{color-scheme:light;--cp-bg:#f7f4ef;--cp-bg-elevated:#fcfbf8;--cp-surface:#ffffff;--cp-surface-soft:#f5f5f5;--cp-border:#dedede;--cp-border-strong:#919191;--cp-text:#242424;--cp-text-muted:#5c5c5c;--cp-text-soft:#6f6f6f;--cp-accent:#6d28d9;--cp-accent-hover:#5b21b6;--cp-accent-soft:rgba(109,40,217,.08);--cp-accent-fg:#ffffff;--cp-success:#16a34a;--cp-danger:#dc2626;--cp-warning:#d97706;--cp-link:#0078d4;--cp-shadow:0 18px 48px rgba(0,0,0,.12);--cp-overlay:rgba(255,255,255,.8);--cp-panel:rgba(255,255,255,.86);--cp-panel-strong:rgba(255,255,255,.96);--cp-sheen:rgba(255,255,255,.55);--cp-highlight:rgba(109,40,217,.12)}
-html[data-theme="dark"]{color-scheme:dark;--cp-bg:#3d3b3a;--cp-bg-elevated:#343231;--cp-surface:#292929;--cp-surface-soft:#2e2e2e;--cp-border:#474747;--cp-border-strong:#5f5f5f;--cp-text:#dedede;--cp-text-muted:#919191;--cp-text-soft:#b0b0b0;--cp-accent:#c4b5fd;--cp-accent-hover:#a78bfa;--cp-accent-soft:rgba(196,181,253,.14);--cp-accent-fg:#1a1a1a;--cp-success:#4ade80;--cp-danger:#f87171;--cp-warning:#fbbf24;--cp-link:#4da6ff;--cp-shadow:0 18px 48px rgba(0,0,0,.32);--cp-overlay:rgba(41,41,41,.88);--cp-panel:rgba(41,41,41,.72);--cp-panel-strong:rgba(41,41,41,.96);--cp-sheen:rgba(255,255,255,.04);--cp-highlight:rgba(196,181,253,.12)}
+:root {
+  color-scheme: light;
+  --cp-bg: #f7f4ef;
+  --cp-bg-elevated: #fcfbf8;
+  --cp-surface: #ffffff;
+  --cp-surface-soft: #f5f5f5;
+  --cp-border: #dedede;
+  --cp-border-strong: #919191;
+  --cp-text: #242424;
+  --cp-text-muted: #5c5c5c;
+  --cp-text-soft: #6f6f6f;
+  --cp-accent: #b11f4b;
+  --cp-accent-hover: #9a1a41;
+  --cp-accent-soft: rgba(177, 31, 75, 0.08);
+  --cp-accent-fg: #ffffff;
+  --cp-success: #16a34a;
+  --cp-danger: #dc2626;
+  --cp-warning: #f59e0b;
+  --cp-link: #0078d4;
+  --cp-shadow: 0 18px 48px rgba(0, 0, 0, 0.12);
+  --cp-overlay: rgba(255, 255, 255, 0.8);
+  --cp-panel: rgba(255, 255, 255, 0.86);
+  --cp-panel-strong: rgba(255, 255, 255, 0.96);
+  --cp-sheen: rgba(255, 255, 255, 0.55);
+  --cp-highlight: rgba(177, 31, 75, 0.12);
+}
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --cp-bg: #3d3b3a;
+  --cp-bg-elevated: #343231;
+  --cp-surface: #292929;
+  --cp-surface-soft: #2e2e2e;
+  --cp-border: #474747;
+  --cp-border-strong: #5f5f5f;
+  --cp-text: #dedede;
+  --cp-text-muted: #919191;
+  --cp-text-soft: #b0b0b0;
+  --cp-accent: #fd8ea1;
+  --cp-accent-hover: #fb7b91;
+  --cp-accent-soft: rgba(253, 142, 161, 0.14);
+  --cp-accent-fg: #1a1a1a;
+  --cp-success: #4ade80;
+  --cp-danger: #f87171;
+  --cp-warning: #fbbf24;
+  --cp-link: #4da6ff;
+  --cp-shadow: 0 18px 48px rgba(0, 0, 0, 0.32);
+  --cp-overlay: rgba(41, 41, 41, 0.88);
+  --cp-panel: rgba(41, 41, 41, 0.72);
+  --cp-panel-strong: rgba(41, 41, 41, 0.96);
+  --cp-sheen: rgba(255, 255, 255, 0.04);
+  --cp-highlight: rgba(253, 142, 161, 0.12);
+}
 *{box-sizing:border-box}
 body{margin:0;background:var(--cp-bg);color:var(--cp-text);font-family:"Segoe UI",Aptos,Calibri,-apple-system,BlinkMacSystemFont,sans-serif;font-size:15px;line-height:1.6}
 code,pre,kbd{font-family:Consolas,"Courier New",Courier,monospace}
+a{color:var(--cp-link)}
 .wrap{max-width:1180px;margin:0 auto;padding:0 20px 80px}
 header.top{background:var(--cp-bg-elevated);border-bottom:1px solid var(--cp-border);padding:34px 0 26px;margin-bottom:26px}
 header.top .wrap{padding-bottom:0}
@@ -42,8 +89,11 @@ h1{margin:0 0 10px;font-size:31px;line-height:1.2;font-weight:650;letter-spacing
 .seg button.on{background:var(--cp-accent);color:var(--cp-accent-fg);font-weight:600}
 .btn{background:var(--cp-surface);border:1px solid var(--cp-border);color:var(--cp-text-muted);border-radius:.625rem;padding:10px 14px;font-family:inherit;font-size:13.5px;cursor:pointer;white-space:nowrap}
 .btn:hover{border-color:var(--cp-accent);color:var(--cp-accent)}
+.btn.primary{background:var(--cp-accent);border-color:var(--cp-accent);color:var(--cp-accent-fg);text-decoration:none}
+.btn.primary:hover{background:var(--cp-accent-hover);color:var(--cp-accent-fg)}
 nav.doms{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:10px;margin:0 0 30px}
 .navbtn{display:flex;gap:11px;align-items:center;text-align:left;background:var(--cp-surface);border:1px solid var(--cp-border);border-radius:16px;padding:13px 15px;cursor:pointer;color:var(--cp-text);font-family:inherit;box-shadow:0 0 2px rgba(0,0,0,.12),0 1px 2px rgba(0,0,0,.14)}
+.navbtn.study-nav{text-decoration:none}
 .navbtn:hover{border-color:var(--cp-accent)}
 .navbtn.on{border-color:var(--cp-accent);background:var(--cp-accent-soft)}
 .navnum{flex:0 0 30px;height:30px;border-radius:50%;background:var(--cp-accent);color:var(--cp-accent-fg);display:grid;place-items:center;font-weight:700;font-size:14px}
@@ -107,25 +157,67 @@ details.cleanup summary::-webkit-details-marker{display:none}
 details.cleanup summary::before{content:"\25B8 ";color:var(--cp-accent)}
 details.cleanup[open] summary::before{content:"\25BE "}
 details.cleanup .codewrap{margin:0 12px 12px}
+.study-aid{margin:56px 0 44px;scroll-margin-top:16px}
+.study-hero{background:var(--cp-surface);border:1px solid var(--cp-border);border-top:4px solid var(--cp-accent);border-radius:16px;padding:24px;box-shadow:0 0 2px rgba(0,0,0,.12),0 1px 2px rgba(0,0,0,.14)}
+.study-hero h2{margin:0 0 12px;font-size:26px;line-height:1.25}
+.study-hero p{color:var(--cp-text-muted);max-width:92ch}
+.study-anchor{margin:16px 0;padding:13px 16px;background:var(--cp-accent-soft);border-left:3px solid var(--cp-accent);border-radius:.625rem;color:var(--cp-text)}
+.study-jump{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px}
+.study-jump a{border:1px solid var(--cp-border);border-radius:.625rem;background:var(--cp-surface-soft);color:var(--cp-text);padding:6px 10px;text-decoration:none;font-size:12.5px}
+.study-jump a:hover{border-color:var(--cp-accent);color:var(--cp-accent)}
+.study-tools{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:16px 0 22px}
+#study-q{flex:1 1 360px;min-width:240px;background:var(--cp-surface);border:1px solid var(--cp-border);color:var(--cp-text);border-radius:.625rem;padding:10px 14px;font-family:inherit;font-size:14.5px;outline:none}
+#study-q:focus{border-color:var(--cp-accent)}
+.study-notes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-items:start}
+.study-topic{background:var(--cp-surface);border:1px solid var(--cp-border);border-radius:16px;padding:20px;scroll-margin-top:16px;box-shadow:0 0 2px rgba(0,0,0,.12),0 1px 2px rgba(0,0,0,.14)}
+.study-topic h3{margin:0 0 12px;font-size:19px;line-height:1.3;color:var(--cp-accent)}
+.study-topic h4,.study-topic h5{margin:18px 0 8px}
+.study-topic p{margin:8px 0;color:var(--cp-text-muted)}
+.study-list{margin:8px 0;padding-left:22px}
+.study-list li{margin-bottom:6px}
+.study-table-wrap{overflow-x:auto;margin:14px 0}
+.study-table-wrap table{width:100%;border-collapse:collapse;font-size:13px}
+.study-table-wrap th,.study-table-wrap td{padding:9px 10px;border:1px solid var(--cp-border);text-align:left;vertical-align:top}
+.study-table-wrap th{background:var(--cp-surface-soft);color:var(--cp-text);font-weight:650}
+.study-code{background:var(--cp-bg-elevated);border:1px solid var(--cp-border);border-radius:.625rem;padding:14px 16px;overflow-x:auto;font-size:12.9px;line-height:1.62}
+.study-quiz{margin-top:44px;scroll-margin-top:16px}
+.study-quiz .dom-num{flex-basis:48px;border-radius:.625rem}
+.quiz-progress{margin:-2px 0 14px;color:var(--cp-text-muted);font-size:13px}
+.quiz-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.quiz-item{background:var(--cp-surface);border:1px solid var(--cp-border);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:12px;box-shadow:0 0 2px rgba(0,0,0,.12),0 1px 2px rgba(0,0,0,.14)}
+.quiz-item h4{display:flex;gap:10px;align-items:flex-start;margin:0;font-size:14px;line-height:1.5;font-weight:600}
+.quiz-item h4 span{flex:0 0 28px;height:28px;border-radius:50%;background:var(--cp-accent-soft);color:var(--cp-accent);display:grid;place-items:center;font-size:12px}
+.quiz-choices{display:flex;gap:8px}
+.quiz-choice{flex:1;background:var(--cp-surface-soft);border:1px solid var(--cp-border);border-radius:.625rem;color:var(--cp-text);padding:8px 12px;font-family:inherit;cursor:pointer}
+.quiz-choice:hover{border-color:var(--cp-accent)}
+.quiz-choice.correct{border-color:var(--cp-success);color:var(--cp-success)}
+.quiz-choice.wrong{border-color:var(--cp-danger);color:var(--cp-danger)}
+.quiz-feedback{border-top:1px solid var(--cp-border);padding-top:10px;font-size:13px}
+.quiz-feedback strong{display:block;color:var(--cp-accent);margin-bottom:3px}
+.quiz-feedback span{color:var(--cp-text-muted)}
+.study-sources{margin-top:44px}
+.study-sources .study-list{columns:2;column-gap:30px}
+.study-sources .study-list li{break-inside:avoid}
 .empty{display:none;text-align:center;padding:50px 20px;color:var(--cp-text-muted)}
 footer{border-top:1px solid var(--cp-border);margin-top:36px;padding-top:20px;color:var(--cp-text-muted);font-size:12.5px}
 ::-webkit-scrollbar{height:10px;width:10px}
 ::-webkit-scrollbar-track{background:var(--cp-bg)}
 ::-webkit-scrollbar-thumb{background:var(--cp-border-strong);border-radius:5px}
-@media print{.controls,nav.doms,.tabs,.copy,header.top .stats{display:none}.lab-body{display:block!important}.pane{display:block!important}.lab{break-inside:avoid}}
+@media print{.controls,nav.doms,.tabs,.copy,.study-tools,.quiz-choices,header.top .stats{display:none}.lab-body,.quiz-feedback{display:block!important}.pane{display:block!important}.lab,.quiz-item,.study-topic{break-inside:avoid}}
+@media(max-width:800px){.study-notes,.quiz-list{grid-template-columns:1fr}.study-sources .study-list{columns:1}}
 @media(max-width:720px){.lab-head{flex-wrap:wrap}.meta{width:100%;justify-content:flex-start}h1{font-size:25px}}
 </style>
 </head>
 <body>
 <header class="top"><div class="wrap">
   <p class="eyebrow">Microsoft Certified: Azure AI Cloud Developer Associate</p>
-  <h1>AI-200 Hands-On Lab Guide</h1>
-  <p class="sub-lede">23 step-by-step labs covering every AI-200 exam domain, each shown as an <b>Azure Portal</b> click-path with the equivalent <b>Azure CLI</b> commands and <b>Python / SDK</b> code. Every lab opens with a <b>&ldquo;What the exam is testing&rdquo;</b> callout and closes with the traps and distractors that show up in the real question bank.</p>
+  <h1>AI-200 Hands-On Lab &amp; Study Guide</h1>
+  <p class="sub-lede">23 step-by-step labs covering every AI-200 exam domain, plus a focused identity, governance, and monitoring cheat sheet with 100 explained true/false questions. Labs include <b>Azure Portal</b>, <b>Azure CLI</b>, and <b>Python / SDK</b> paths with exam callouts and traps.</p>
   <div class="stats">
     <div class="stat"><b>23</b><span>Labs</span></div>
     <div class="stat"><b>4</b><span>Domains</span></div>
     <div class="stat"><b>3</b><span>Methods each</span></div>
-    <div class="stat"><b>Python</b><span>SDK-first</span></div>
+    <div class="stat"><b>100</b><span>Study questions</span></div>
   </div>
   <div class="controls">
     <input id="q" type="search" placeholder="Search labs, commands, exam concepts (e.g. &quot;pgvector&quot;, &quot;change feed&quot;, &quot;KEDA&quot;, &quot;dead-letter&quot;)" autocomplete="off">
@@ -136,12 +228,13 @@ footer{border-top:1px solid var(--cp-border);margin-top:36px;padding-top:20px;co
       <button data-level="advanced" type="button">Advanced</button>
     </div>
     <button id="expand" class="btn" type="button">Expand all</button>
+    <a class="btn primary" href="#study-aid">Identity study aid</a>
     <button id="theme" class="btn" type="button" title="Toggle light / dark theme" aria-label="Toggle light or dark theme">&#9788; Light</button>
   </div>
 </div></header>
 
 <div class="wrap">
-  <nav class="doms"><button class="navbtn" data-domain="containers" type="button"><span class="navnum">1</span><span class="navtxt"><b>Develop Containerized Solutions on Azure</b><i>20–25% &middot; 6 labs</i></span></button><button class="navbtn" data-domain="data" type="button"><span class="navnum">2</span><span class="navtxt"><b>Develop AI Solutions with Azure Data Services</b><i>25–30% &middot; 7 labs</i></span></button><button class="navbtn" data-domain="connect" type="button"><span class="navnum">3</span><span class="navtxt"><b>Connect to and Consume Azure Services</b><i>20–25% &middot; 5 labs</i></span></button><button class="navbtn" data-domain="secure" type="button"><span class="navnum">4</span><span class="navtxt"><b>Secure, Monitor and Troubleshoot Azure Solutions</b><i>20–25% &middot; 5 labs</i></span></button></nav>
+  <nav class="doms" aria-label="Guide sections"><button class="navbtn" data-domain="containers" type="button"><span class="navnum">1</span><span class="navtxt"><b>Develop Containerized Solutions on Azure</b><i>20–25% &middot; 6 labs</i></span></button><button class="navbtn" data-domain="data" type="button"><span class="navnum">2</span><span class="navtxt"><b>Develop AI Solutions with Azure Data Services</b><i>25–30% &middot; 7 labs</i></span></button><button class="navbtn" data-domain="connect" type="button"><span class="navnum">3</span><span class="navtxt"><b>Connect to and Consume Azure Services</b><i>20–25% &middot; 5 labs</i></span></button><button class="navbtn" data-domain="secure" type="button"><span class="navnum">4</span><span class="navtxt"><b>Secure, Monitor and Troubleshoot Azure Solutions</b><i>20–25% &middot; 5 labs</i></span></button><a class="navbtn study-nav" href="#study-aid"><span class="navnum">+</span><span class="navtxt"><b>Identity, governance &amp; monitoring</b><i>Cheat sheet &middot; 100 explained questions</i></span></a></nav>
   <section class="domain" id="dom-containers" data-domain="containers"><div class="dom-head"><span class="dom-num">1</span><div><h2>Develop Containerized Solutions on Azure</h2><p class="dom-w">Exam weighting <b>20–25%</b> &middot; 6 labs</p></div></div><p class="dom-blurb">Azure Container Registry (build, store, version, Tasks), and the three ways to run a container: App Service for Containers, Azure Container Apps (with KEDA event-driven scaling and revisions) and AKS with manifest files. Expect &#x27;which host fits this workload&#x27; questions, revision/traffic-split questions, and &#x27;why won&#x27;t my container start&#x27; troubleshooting.</p>
 <article class="lab" id="lab-1.1" data-domain="containers" data-level="foundational" data-search="1.1 build, store, version and manage images in azure container registry create an acr, build and push a versioned image, tag it for release, and inspect repositories and manifests. acr skus —  basic / standard / premium . only  premium  adds geo-replication, private link, content-trust and larger throughput. geo-replication is a common distractor answer for basic/standard.  az acr build  runs the docker build  in the cloud  using an acr task — you do  not  need a local docker daemon. this is the exam&#x27;s preferred answer when the question says &#x27;no docker installed&#x27;. authentication order of preference:  microsoft entra token  ( az acr login ) &amp;gt; repository-scoped tokens &amp;gt;  admin user . the admin account is disabled by default and is for testing only. a tag is mutable by default; the same tag can be re-pushed. use  az acr repository update --write-enabled false  or image  lock  to make a specific version immutable. pulling an image needs the  acrpull  role; pushing needs  acrpush . don&#x27;t hand out contributor just to pull.  az acr build  vs  docker build : if the question says &#x27;the developer has no docker desktop / build agent&#x27;, the answer is  az acr build  (server-side task), not &#x27;install docker&#x27;. registry  name  is alphanumeric only and globally unique; the  login server  is always  &amp;lt;name&amp;gt;.azurecr.io . you cannot rename a registry. geo-replication, private endpoints and content trust require  premium . selecting standard and expecting geo-replication is a classic wrong answer. enabling the  admin user  to let an app pull is the  wrong  answer — assign  acrpull  to the app&#x27;s managed identity instead.">
   <header class="lab-head" role="button" tabindex="0">
@@ -2738,6 +2831,1240 @@ union withsource=table requests, dependencies, traces, exceptions
   </div>
 </article></section>
   <div class="empty" id="empty"><h3>No labs match that filter</h3><p>Try a different search term or clear the level filter.</p></div>
+
+<section class="study-aid" id="study-aid">
+  <div class="study-hero">
+    <p class="eyebrow">Domain 4 companion study aid</p>
+    <h2>AI-200 identity, governance, and monitoring study aid</h2>
+    <blockquote class="study-anchor"><strong>Current-scope anchor:</strong> The 2026 <a href="https://learn.microsoft.com/en-us/credentials/certifications/resources/study-guides/ai-200" target="_blank" rel="noreferrer">AI-200 study guide</a> places these skills in <strong>Secure, monitor, and troubleshoot Azure solutions (20-25%)</strong>. The guide below is an original study aid, not exam content.</blockquote>
+    <div class="study-jump"><a href="#study-exam-scope-and-decision-model">Exam scope and decision model</a><a href="#study-identity-authentication-and-authorization">Identity, authentication, and authorization</a><a href="#study-managed-identities">Managed identities</a><a href="#study-rbac-vs-entra-roles-vs-app-permissions">RBAC vs Entra roles vs app permissions</a><a href="#study-policy-initiatives-locks-tags-and-pim">Policy, initiatives, locks, tags, and PIM</a><a href="#study-key-vault-objects-access-rotation-and-network">Key Vault: objects, access, rotation, and network</a><a href="#study-app-configuration">App Configuration</a><a href="#study-azure-monitor-application-insights-and-log-analytics">Azure Monitor, Application Insights, and Log Analytics</a><a href="#study-opentelemetry">OpenTelemetry</a><a href="#study-kql-operators-and-patterns">KQL operators and patterns</a><a href="#study-original-scenarios-and-gotchas">Original scenarios and gotchas</a><a href="#study-quiz">100-question quiz</a><a href="#study-sources">Official sources</a></div>
+  </div>
+  <div class="study-tools">
+    <input id="study-q" type="search" placeholder="Search the study aid and quiz" autocomplete="off">
+    <button id="show-answers" class="btn" type="button">Show all answers</button>
+    <button id="reset-quiz" class="btn" type="button">Reset quiz</button>
+  </div>
+  <div class="study-notes"><section class="study-topic" id="study-exam-scope-and-decision-model" data-search="exam scope and decision model expect applied decisions rather than product-name recall:
+
+- select an identity and credential path that minimizes secret ownership.
+- separate authentication (establishing identity) from authorization (permitted operation).
+- apply governance at the correct scope and distinguish prevention, reporting, remediation, and recovery.
+- protect secrets and cryptographic material while making configuration refreshable.
+- choose metrics, logs, activity log, traces, and alerts based on the question being answered.
+- use kql to filter early, preserve useful dimensions, aggregate correctly, and avoid accidental row multiplication.
+
+official scope: [ai-200 study guide](https://learn.microsoft.com/en-us/credentials/certifications/resources/study-guides/ai-200)."><h3>Exam scope and decision model</h3><p>Expect applied decisions rather than product-name recall:</p><ul class="study-list"><li>Select an identity and credential path that minimizes secret ownership.</li><li>Separate authentication (establishing identity) from authorization (permitted operation).</li><li>Apply governance at the correct scope and distinguish prevention, reporting, remediation, and recovery.</li><li>Protect secrets and cryptographic material while making configuration refreshable.</li><li>Choose metrics, logs, Activity Log, traces, and alerts based on the question being answered.</li><li>Use KQL to filter early, preserve useful dimensions, aggregate correctly, and avoid accidental row multiplication.</li></ul><p>Official scope: <a href="https://learn.microsoft.com/en-us/credentials/certifications/resources/study-guides/ai-200" target="_blank" rel="noreferrer">AI-200 study guide</a>.</p></section><section class="study-topic" id="study-identity-authentication-and-authorization" data-search="identity, authentication, and authorization microsoft entra id is the identity provider for users, applications, service principals, managed identities, tokens, and directory administration. a token proves an identity and carries claims; the target service still evaluates whether those claims authorize the requested action. mfa, conditional access, workload identity federation, and managed identities reduce credential risk but do not grant resource permissions by themselves.
+
+azure rbac controls access to azure resources through role definitions, assignments, principals, and scopes. a role assignment can target a management group, subscription, resource group, or resource, and inheritance flows downward. data-plane access depends on the service&#x27;s authorization model and the selected role; management-plane read access is not automatically permission to read data.
+
+entra directory roles (for example, user administrator) administer directory objects and identity settings. app roles and delegated scopes are application-level permissions defined by an api. a client can authenticate successfully and still receive 403 because it lacks an azure rbac assignment, a data-plane permission, a consented scope, or a required application role."><h3>Identity, authentication, and authorization</h3><p>Microsoft Entra ID is the identity provider for users, applications, service principals, managed identities, tokens, and directory administration. A token proves an identity and carries claims; the target service still evaluates whether those claims authorize the requested action. MFA, conditional access, workload identity federation, and managed identities reduce credential risk but do not grant resource permissions by themselves.</p><p>Azure RBAC controls access to Azure resources through role definitions, assignments, principals, and scopes. A role assignment can target a management group, subscription, resource group, or resource, and inheritance flows downward. Data-plane access depends on the service&#x27;s authorization model and the selected role; management-plane read access is not automatically permission to read data.</p><p>Entra directory roles (for example, User Administrator) administer directory objects and identity settings. App roles and delegated scopes are application-level permissions defined by an API. A client can authenticate successfully and still receive 403 because it lacks an Azure RBAC assignment, a data-plane permission, a consented scope, or a required application role.</p></section><section class="study-topic" id="study-managed-identities" data-search="managed identities | type | lifecycle | reuse | good fit | gotcha |
+| --- | --- | --- | --- | --- |
+| system-assigned | tied to one azure resource; removed with the resource | usually no | a single app with simple ownership | recreating the resource creates a different identity |
+| user-assigned | standalone azure resource | yes, across supported resources | blue/green deployments and stable permissions | its independent lifecycle requires deliberate cleanup |
+
+both types obtain tokens from azure without the application storing a client secret. the identity still needs an appropriate role at the target scope. prefer a user-assigned identity when several instances need the same stable principal; prefer system-assigned when lifecycle coupling is desirable. workload identity federation is a related secretless pattern for external workloads, but it is not the same thing as a managed identity."><h3>Managed identities</h3><div class="study-table-wrap"><table><thead><tr><th>Type</th><th>Lifecycle</th><th>Reuse</th><th>Good fit</th><th>Gotcha</th></tr></thead><tbody><tr><td>System-assigned</td><td>Tied to one Azure resource; removed with the resource</td><td>Usually no</td><td>A single app with simple ownership</td><td>Recreating the resource creates a different identity</td></tr><tr><td>User-assigned</td><td>Standalone Azure resource</td><td>Yes, across supported resources</td><td>Blue/green deployments and stable permissions</td><td>Its independent lifecycle requires deliberate cleanup</td></tr></tbody></table></div><p>Both types obtain tokens from Azure without the application storing a client secret. The identity still needs an appropriate role at the target scope. Prefer a user-assigned identity when several instances need the same stable principal; prefer system-assigned when lifecycle coupling is desirable. Workload identity federation is a related secretless pattern for external workloads, but it is not the same thing as a managed identity.</p></section><section class="study-topic" id="study-rbac-vs-entra-roles-vs-app-permissions" data-search="rbac vs entra roles vs app permissions | question | azure rbac | entra directory role | app role or delegated scope |
+| --- | --- | --- | --- |
+| controls | azure resource and supported data-plane operations | directory administration | api authorization |
+| assigned to | user, group, service principal, managed identity | directory principal | client/service principal or signed-in user |
+| typical example | key vault secrets user on one vault | application administrator | `orders.read` or `orders.readwrite` |
+| scope | management group to resource; service-specific data scope | tenant/directory role scope | api and consent model |
+| common mistake | giving owner for a read task | assuming it grants azure resource access | treating a feature flag as authorization |
+
+use groups and pim for human elevation, narrowly scoped roles for workloads, and access reviews to remove stale access. `owner` and `contributor` are not substitutes for a purpose-built data-plane role."><h3>RBAC vs Entra roles vs app permissions</h3><div class="study-table-wrap"><table><thead><tr><th>Question</th><th>Azure RBAC</th><th>Entra directory role</th><th>App role or delegated scope</th></tr></thead><tbody><tr><td>Controls</td><td>Azure resource and supported data-plane operations</td><td>Directory administration</td><td>API authorization</td></tr><tr><td>Assigned to</td><td>User, group, service principal, managed identity</td><td>Directory principal</td><td>Client/service principal or signed-in user</td></tr><tr><td>Typical example</td><td>Key Vault Secrets User on one vault</td><td>Application Administrator</td><td><code>Orders.Read</code> or <code>Orders.ReadWrite</code></td></tr><tr><td>Scope</td><td>Management group to resource; service-specific data scope</td><td>Tenant/directory role scope</td><td>API and consent model</td></tr><tr><td>Common mistake</td><td>Giving Owner for a read task</td><td>Assuming it grants Azure resource access</td><td>Treating a feature flag as authorization</td></tr></tbody></table></div><p>Use groups and PIM for human elevation, narrowly scoped roles for workloads, and access reviews to remove stale access. <code>Owner</code> and <code>Contributor</code> are not substitutes for a purpose-built data-plane role.</p></section><section class="study-topic" id="study-policy-initiatives-locks-tags-and-pim" data-search="policy, initiatives, locks, tags, and pim azure policy evaluates resource state and requests. `deny` blocks a noncompliant request, `audit` records noncompliance, `modify` changes supported properties, and `deployifnotexists` can deploy a related resource or configuration when remediation permissions and a remediation task are available. an initiative groups policy definitions and parameters for consistent assignment. an exemption should document owner, reason, compensating control, and expiration.
+
+management groups organize subscriptions and are useful for applying a common policy baseline. resource locks are an operational guardrail: `cannotdelete` blocks deletion while allowing most writes; `readonly` blocks writes and deletion. locks can inherit, but an overly broad lock can block legitimate deployments. locks do not replace rbac and do not make data immutable in every service.
+
+tags are metadata for ownership, cost, environment, and classification. they are not an authorization boundary, and propagation is not universal; use policy or automation when child resources must be tagged. pim provides eligible, time-bound, auditable elevation for supported roles. it does not automatically solve workload authorization or repair an incorrect role scope."><h3>Policy, initiatives, locks, tags, and PIM</h3><p>Azure Policy evaluates resource state and requests. <code>Deny</code> blocks a noncompliant request, <code>Audit</code> records noncompliance, <code>Modify</code> changes supported properties, and <code>DeployIfNotExists</code> can deploy a related resource or configuration when remediation permissions and a remediation task are available. An initiative groups policy definitions and parameters for consistent assignment. An exemption should document owner, reason, compensating control, and expiration.</p><p>Management groups organize subscriptions and are useful for applying a common policy baseline. Resource locks are an operational guardrail: <code>CanNotDelete</code> blocks deletion while allowing most writes; <code>ReadOnly</code> blocks writes and deletion. Locks can inherit, but an overly broad lock can block legitimate deployments. Locks do not replace RBAC and do not make data immutable in every service.</p><p>Tags are metadata for ownership, cost, environment, and classification. They are not an authorization boundary, and propagation is not universal; use policy or automation when child resources must be tagged. PIM provides eligible, time-bound, auditable elevation for supported roles. It does not automatically solve workload authorization or repair an incorrect role scope.</p></section><section class="study-topic" id="study-key-vault-objects-access-rotation-and-network" data-search="key vault: objects, access, rotation, and network | object | stores or performs | typical use | important distinction |
+| --- | --- | --- | --- |
+| key | cryptographic key material and operations | encrypt, decrypt, sign, verify, wrap | applications may use an operation without retrieving key material |
+| secret | versioned opaque value | password, token, connection string | retrieval is a data-plane action |
+| certificate | x.509 certificate plus policy/lifecycle metadata | tls and certificate management | may have an associated secret and renewal policy |
+
+use azure rbac or the vault&#x27;s supported access model consistently. a vault reader can inspect resource metadata but does not necessarily read secret values. rotation policy can create new key versions; secret and certificate rotation commonly requires automation to update the dependent service and verify that it can use the new version. versionless references can follow a current version, but clients may cache values and need explicit refresh.
+
+soft delete supports recovery during a retention period. purge protection prevents destructive purge during that period and is important for regulated or recovery-sensitive vaults. private endpoints keep traffic on private connectivity, but they do not grant identity permission. private dns zones, correct links, routes, firewall settings, and authorization must all line up.
+
+**gotcha:** rotating a database password in key vault alone does not change the password in the database or force every client to reload it. design a two-phase rotation, a rollback path, and an observable validation step."><h3>Key Vault: objects, access, rotation, and network</h3><div class="study-table-wrap"><table><thead><tr><th>Object</th><th>Stores or performs</th><th>Typical use</th><th>Important distinction</th></tr></thead><tbody><tr><td>Key</td><td>Cryptographic key material and operations</td><td>Encrypt, decrypt, sign, verify, wrap</td><td>Applications may use an operation without retrieving key material</td></tr><tr><td>Secret</td><td>Versioned opaque value</td><td>Password, token, connection string</td><td>Retrieval is a data-plane action</td></tr><tr><td>Certificate</td><td>X.509 certificate plus policy/lifecycle metadata</td><td>TLS and certificate management</td><td>May have an associated secret and renewal policy</td></tr></tbody></table></div><p>Use Azure RBAC or the vault&#x27;s supported access model consistently. A vault Reader can inspect resource metadata but does not necessarily read secret values. Rotation policy can create new key versions; secret and certificate rotation commonly requires automation to update the dependent service and verify that it can use the new version. Versionless references can follow a current version, but clients may cache values and need explicit refresh.</p><p>Soft delete supports recovery during a retention period. Purge protection prevents destructive purge during that period and is important for regulated or recovery-sensitive vaults. Private endpoints keep traffic on private connectivity, but they do not grant identity permission. Private DNS zones, correct links, routes, firewall settings, and authorization must all line up.</p><p><strong>Gotcha:</strong> rotating a database password in Key Vault alone does not change the password in the database or force every client to reload it. Design a two-phase rotation, a rollback path, and an observable validation step.</p></section><section class="study-topic" id="study-app-configuration" data-search="app configuration app configuration is for centrally managed non-secret key-values, labels, feature flags, and references. labels distinguish variants such as `production` and `staging`; they are not an access-control boundary. feature flags support kill switches, targeting, and percentage rollout, but server-side authorization must remain independent.
+
+| concern | key vault | app configuration |
+| --- | --- | --- |
+| primary content | secrets, keys, certificates | non-secret settings and feature flags |
+| environment variants | separate objects/versions or references | labels and key-value selection |
+| secret handling | secret value is protected and retrieved with data-plane permission | store a key vault reference, not plaintext |
+| refresh | version changes, client/runtime cache behavior | provider registration, polling/cache, and optional sentinel |
+| network | firewall/private endpoint/private dns options | endpoint/network controls plus identity |
+
+a key vault reference contains a uri/reference; the runtime identity must still be authorized to resolve it. dynamic refresh requires the client library/provider to register settings, poll or be triggered, and replace its cached view. a sentinel key is changed after a coherent set of settings is ready, allowing clients to refresh the set together. never commit or log resolved secret values."><h3>App Configuration</h3><p>App Configuration is for centrally managed non-secret key-values, labels, feature flags, and references. Labels distinguish variants such as <code>Production</code> and <code>Staging</code>; they are not an access-control boundary. Feature flags support kill switches, targeting, and percentage rollout, but server-side authorization must remain independent.</p><div class="study-table-wrap"><table><thead><tr><th>Concern</th><th>Key Vault</th><th>App Configuration</th></tr></thead><tbody><tr><td>Primary content</td><td>Secrets, keys, certificates</td><td>Non-secret settings and feature flags</td></tr><tr><td>Environment variants</td><td>Separate objects/versions or references</td><td>Labels and key-value selection</td></tr><tr><td>Secret handling</td><td>Secret value is protected and retrieved with data-plane permission</td><td>Store a Key Vault reference, not plaintext</td></tr><tr><td>Refresh</td><td>Version changes, client/runtime cache behavior</td><td>Provider registration, polling/cache, and optional sentinel</td></tr><tr><td>Network</td><td>Firewall/private endpoint/private DNS options</td><td>Endpoint/network controls plus identity</td></tr></tbody></table></div><p>A Key Vault reference contains a URI/reference; the runtime identity must still be authorized to resolve it. Dynamic refresh requires the client library/provider to register settings, poll or be triggered, and replace its cached view. A sentinel key is changed after a coherent set of settings is ready, allowing clients to refresh the set together. Never commit or log resolved secret values.</p></section><section class="study-topic" id="study-azure-monitor-application-insights-and-log-analytics" data-search="azure monitor, application insights, and log analytics azure monitor is the umbrella for metrics, logs, activity log, alerts, workbooks, and insights. application insights provides application telemetry such as requests, dependencies, exceptions, availability, and traces. log analytics provides a workspace-backed kql experience over tables. a resource log must be routed to a destination before it is queryable there.
+
+| signal | shape and question answered | retention/query behavior | example |
+| --- | --- | --- | --- |
+| metrics | numeric time series with dimensions; &quot;how much/how often?&quot; | fast thresholding; sampled aggregation matters | cpu percent by instance |
+| logs | detailed records; &quot;what happened and with which fields?&quot; | kql, table retention, richer context | failed dependency with operation id |
+| activity log | azure control-plane operations and service health/resource events | subscription-level history; export for longer retention | who changed a firewall rule? |
+
+use dimensions carefully: a metric alert can evaluate each dimension series separately, while high-cardinality dimensions can increase cost and noise. scheduled-query alerts are appropriate when a kql predicate, join, sequence, or count is required. workbooks compose visualizations and queries; they do not replace the underlying telemetry store.
+
+| alert type | best fit | strength | gotcha |
+| --- | --- | --- | --- |
+| metric alert | numeric threshold over a metric | low latency and efficient evaluation | limited context; aggregation and dimensions matter |
+| log-query alert | kql condition over logs | rich correlation, joins, and custom logic | ingestion/query delay and query cost; schedule/window matter |
+
+include severity, evaluation window, frequency, dimensions, suppression/noise controls, an owner, a runbook, and a test. protect sensitive fields and control workspace and workbook access."><h3>Azure Monitor, Application Insights, and Log Analytics</h3><p>Azure Monitor is the umbrella for metrics, logs, Activity Log, alerts, workbooks, and insights. Application Insights provides application telemetry such as requests, dependencies, exceptions, availability, and traces. Log Analytics provides a workspace-backed KQL experience over tables. A resource log must be routed to a destination before it is queryable there.</p><div class="study-table-wrap"><table><thead><tr><th>Signal</th><th>Shape and question answered</th><th>Retention/query behavior</th><th>Example</th></tr></thead><tbody><tr><td>Metrics</td><td>Numeric time series with dimensions; &quot;how much/how often?&quot;</td><td>Fast thresholding; sampled aggregation matters</td><td>CPU percent by instance</td></tr><tr><td>Logs</td><td>Detailed records; &quot;what happened and with which fields?&quot;</td><td>KQL, table retention, richer context</td><td>Failed dependency with operation ID</td></tr><tr><td>Activity Log</td><td>Azure control-plane operations and service health/resource events</td><td>Subscription-level history; export for longer retention</td><td>Who changed a firewall rule?</td></tr></tbody></table></div><p>Use dimensions carefully: a metric alert can evaluate each dimension series separately, while high-cardinality dimensions can increase cost and noise. Scheduled-query alerts are appropriate when a KQL predicate, join, sequence, or count is required. Workbooks compose visualizations and queries; they do not replace the underlying telemetry store.</p><div class="study-table-wrap"><table><thead><tr><th>Alert type</th><th>Best fit</th><th>Strength</th><th>Gotcha</th></tr></thead><tbody><tr><td>Metric alert</td><td>Numeric threshold over a metric</td><td>Low latency and efficient evaluation</td><td>Limited context; aggregation and dimensions matter</td></tr><tr><td>Log-query alert</td><td>KQL condition over logs</td><td>Rich correlation, joins, and custom logic</td><td>Ingestion/query delay and query cost; schedule/window matter</td></tr></tbody></table></div><p>Include severity, evaluation window, frequency, dimensions, suppression/noise controls, an owner, a runbook, and a test. Protect sensitive fields and control workspace and workbook access.</p></section><section class="study-topic" id="study-opentelemetry" data-search="opentelemetry opentelemetry (otel) standardizes traces, metrics, and logs plus instrumentation/export pipelines. a trace represents a distributed operation; a span is one timed unit such as an http request, database call, queue publish, or model invocation. parent-child relationships and w3c `traceparent` propagate context across http and messaging. a business correlation id can help search, but it is not a trace id.
+
+signals can be sampled. head sampling decides early and is cheap; tail sampling can retain completed slow or failed traces but requires buffering and collector capacity. sampling can hide rare failures, so retain error signals and monitor exporter failure, queue pressure, and dropped telemetry. avoid secrets and unbounded user input in attributes; high-cardinality dimensions harm cost and query performance."><h3>OpenTelemetry</h3><p>OpenTelemetry (OTel) standardizes traces, metrics, and logs plus instrumentation/export pipelines. A trace represents a distributed operation; a span is one timed unit such as an HTTP request, database call, queue publish, or model invocation. Parent-child relationships and W3C <code>traceparent</code> propagate context across HTTP and messaging. A business correlation ID can help search, but it is not a trace ID.</p><p>Signals can be sampled. Head sampling decides early and is cheap; tail sampling can retain completed slow or failed traces but requires buffering and collector capacity. Sampling can hide rare failures, so retain error signals and monitor exporter failure, queue pressure, and dropped telemetry. Avoid secrets and unbounded user input in attributes; high-cardinality dimensions harm cost and query performance.</p></section><section class="study-topic" id="study-kql-operators-and-patterns" data-search="kql operators and patterns kql is pipe-oriented and case-sensitive in many identifiers; it is not t-sql. common operators:
+
+| operator | purpose | example |
+| --- | --- | --- |
+| `where` | filter rows early | `where timegenerated &gt; ago(1h)` |
+| `project` | select/rename columns | `project timegenerated, name, durationms` |
+| `extend` | compute columns | `extend isslow = durationms &gt; 1000` |
+| `summarize` | aggregate and group | `summarize count() by bin(timegenerated, 5m)` |
+| `join` | combine related tables | `join kind=leftouter (...) on operationid` |
+| `union` | stack tables | `union apprequests, appdependencies` |
+| `parse` / `parse_json` | extract structured fields | `extend code = tostring(parse_json(properties).code)` |
+| `make-series` | build regularly binned time series | `make-series count() on timegenerated step 5m` |
+
+filter time early, project only needed columns, choose join kind deliberately, and aggregate before joining when possible. many-to-many joins multiply rows. handle missing values with `coalesce`, validate dynamic json types, and use `bin` for comparable time buckets.
+
+```kusto
+apprequests
+| where timegenerated &gt; ago(1h) and success == false
+| summarize failures=count(), lastseen=max(timegenerated) by name
+| order by failures desc
+```
+
+```kusto
+appdependencies
+| where timegenerated &gt; ago(30m)
+| summarize p95=percentile(durationms, 95), errors=countif(success == false)
+    by bin(timegenerated, 5m), target
+| order by timegenerated asc
+```"><h3>KQL operators and patterns</h3><p>KQL is pipe-oriented and case-sensitive in many identifiers; it is not T-SQL. Common operators:</p><div class="study-table-wrap"><table><thead><tr><th>Operator</th><th>Purpose</th><th>Example</th></tr></thead><tbody><tr><td><code>where</code></td><td>Filter rows early</td><td><code>where TimeGenerated &gt; ago(1h)</code></td></tr><tr><td><code>project</code></td><td>Select/rename columns</td><td><code>project TimeGenerated, Name, DurationMs</code></td></tr><tr><td><code>extend</code></td><td>Compute columns</td><td><code>extend IsSlow = DurationMs &gt; 1000</code></td></tr><tr><td><code>summarize</code></td><td>Aggregate and group</td><td><code>summarize count() by bin(TimeGenerated, 5m)</code></td></tr><tr><td><code>join</code></td><td>Combine related tables</td><td><code>join kind=leftouter (...) on OperationId</code></td></tr><tr><td><code>union</code></td><td>Stack tables</td><td><code>union AppRequests, AppDependencies</code></td></tr><tr><td><code>parse</code> / <code>parse_json</code></td><td>Extract structured fields</td><td><code>extend code = tostring(parse_json(Properties).code)</code></td></tr><tr><td><code>make-series</code></td><td>Build regularly binned time series</td><td><code>make-series count() on TimeGenerated step 5m</code></td></tr></tbody></table></div><p>Filter time early, project only needed columns, choose join kind deliberately, and aggregate before joining when possible. Many-to-many joins multiply rows. Handle missing values with <code>coalesce</code>, validate dynamic JSON types, and use <code>bin</code> for comparable time buckets.</p><pre class="study-code" data-language="kusto"><code>AppRequests
+| where TimeGenerated &gt; ago(1h) and Success == false
+| summarize Failures=count(), LastSeen=max(TimeGenerated) by Name
+| order by Failures desc</code></pre><pre class="study-code" data-language="kusto"><code>AppDependencies
+| where TimeGenerated &gt; ago(30m)
+| summarize p95=percentile(DurationMs, 95), errors=countif(Success == false)
+    by bin(TimeGenerated, 5m), Target
+| order by TimeGenerated asc</code></pre></section><section class="study-topic" id="study-original-scenarios-and-gotchas" data-search="original scenarios and gotchas 1. **blue/green identity:** two slots need the same vault permissions during a swap. a user-assigned identity avoids granting a newly created system identity every time, but confirm both slots can attach it and that its lifecycle is governed.
+2. **policy versus lock:** a `readonly` lock can stop a remediation deployment. use policy to enforce https and reserve locks for destructive-operation protection.
+3. **secret rotation:** update the consumer, not only the vault. test old/new overlap, cache expiry, rollback, and alerting.
+4. **private vault outage:** a private endpoint with missing private dns can look like an authorization failure. check name resolution and route before changing roles.
+5. **feature flag security:** a client-visible flag can change behavior but must never be the only check for an admin operation.
+6. **trace gap:** a new worker that drops `traceparent` creates disconnected spans. instrument producer and consumer boundaries and preserve baggage only when its contents are safe.
+7. **alert choice:** a cpu threshold belongs in a metric alert; &quot;five failed payments followed by a dependency timeout for the same operation&quot; belongs in a log-query alert.
+8. **kql join trap:** joining request rows to multiple dependency rows duplicates request counts. aggregate dependencies first or use a correlation-aware pattern."><h3>Original scenarios and gotchas</h3><ol class="study-list"><li><strong>Blue/green identity:</strong> Two slots need the same vault permissions during a swap. A user-assigned identity avoids granting a newly created system identity every time, but confirm both slots can attach it and that its lifecycle is governed.</li><li><strong>Policy versus lock:</strong> A <code>ReadOnly</code> lock can stop a remediation deployment. Use policy to enforce HTTPS and reserve locks for destructive-operation protection.</li><li><strong>Secret rotation:</strong> Update the consumer, not only the vault. Test old/new overlap, cache expiry, rollback, and alerting.</li><li><strong>Private vault outage:</strong> A private endpoint with missing private DNS can look like an authorization failure. Check name resolution and route before changing roles.</li><li><strong>Feature flag security:</strong> A client-visible flag can change behavior but must never be the only check for an admin operation.</li><li><strong>Trace gap:</strong> A new worker that drops <code>traceparent</code> creates disconnected spans. Instrument producer and consumer boundaries and preserve baggage only when its contents are safe.</li><li><strong>Alert choice:</strong> A CPU threshold belongs in a metric alert; &quot;five failed payments followed by a dependency timeout for the same operation&quot; belongs in a log-query alert.</li><li><strong>KQL join trap:</strong> Joining request rows to multiple dependency rows duplicates request counts. Aggregate dependencies first or use a correlation-aware pattern.</li></ol></section></div>
+  <section class="study-quiz" id="study-quiz">
+    <div class="dom-head"><span class="dom-num">100</span><div><h2>100 true/false questions</h2><p class="dom-w">Choose an answer to reveal the explanation</p></div></div>
+    <div class="quiz-progress" id="quiz-progress" aria-live="polite">0 of 100 answered</div>
+    <div class="quiz-list">
+<article class="quiz-item" data-answer="F" data-search="1 a successful entra token acquisition proves that the caller can read a secret from any key vault. false token issuance authenticates; key vault data-plane authorization is still required.">
+  <h4><span>1</span>A successful Entra token acquisition proves that the caller can read a secret from any Key Vault.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 1: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: False</strong>
+    <span class="quiz-explanation">Token issuance authenticates; Key Vault data-plane authorization is still required.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="T" data-search="2 a system-assigned managed identity normally has a lifecycle coupled to its parent resource. true the system identity is created and removed with its parent resource.">
+  <h4><span>2</span>A system-assigned managed identity normally has a lifecycle coupled to its parent resource.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 2: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: True</strong>
+    <span class="quiz-explanation">The system identity is created and removed with its parent resource.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="T" data-search="3 a user-assigned managed identity can be attached to more than one supported azure resource. true a user-assigned identity is independent and reusable.">
+  <h4><span>3</span>A user-assigned managed identity can be attached to more than one supported Azure resource.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 3: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: True</strong>
+    <span class="quiz-explanation">A user-assigned identity is independent and reusable.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="F" data-search="4 recreating a deleted resource with a system-assigned identity normally preserves the old principal object. false recreating the resource normally creates a new system identity.">
+  <h4><span>4</span>Recreating a deleted resource with a system-assigned identity normally preserves the old principal object.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 4: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: False</strong>
+    <span class="quiz-explanation">Recreating the resource normally creates a new system identity.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="T" data-search="5 workload identity federation can remove the need for a long-lived client secret in a supported external workload. true federation exchanges trusted external assertions without a stored long-lived secret.">
+  <h4><span>5</span>Workload identity federation can remove the need for a long-lived client secret in a supported external workload.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 5: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: True</strong>
+    <span class="quiz-explanation">Federation exchanges trusted external assertions without a stored long-lived secret.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="T" data-search="6 authentication establishes identity, while authorization evaluates permitted actions. true authentication is who; authorization is what the identity may do.">
+  <h4><span>6</span>Authentication establishes identity, while authorization evaluates permitted actions.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 6: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: True</strong>
+    <span class="quiz-explanation">Authentication is who; authorization is what the identity may do.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="T" data-search="7 an azure rbac assignment at a resource group can inherit to resources within that group. true rbac assignments inherit down the resource hierarchy.">
+  <h4><span>7</span>An Azure RBAC assignment at a resource group can inherit to resources within that group.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 7: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: True</strong>
+    <span class="quiz-explanation">RBAC assignments inherit down the resource hierarchy.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="F" data-search="8 a directory user administrator role automatically grants contributor access to azure subscriptions. false entra directory roles do not automatically grant azure rbac access.">
+  <h4><span>8</span>A directory User Administrator role automatically grants Contributor access to Azure subscriptions.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 8: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: False</strong>
+    <span class="quiz-explanation">Entra directory roles do not automatically grant Azure RBAC access.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="T" data-search="9 an api scope or app role is defined by the protected api rather than by an unrelated azure resource. true the api owns its scopes and app roles.">
+  <h4><span>9</span>An API scope or app role is defined by the protected API rather than by an unrelated Azure resource.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 9: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: True</strong>
+    <span class="quiz-explanation">The API owns its scopes and app roles.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="F" data-search="10 granting `owner` at subscription scope is the least-privilege choice for an app that only reads one vault secret. false a narrowly scoped data-plane read role is more appropriate.">
+  <h4><span>10</span>Granting <code>Owner</code> at subscription scope is the least-privilege choice for an app that only reads one vault secret.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 10: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: False</strong>
+    <span class="quiz-explanation">A narrowly scoped data-plane read role is more appropriate.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="F" data-search="11 a vault metadata reader role necessarily permits reading secret values. false metadata reader and secret-value access are distinct.">
+  <h4><span>11</span>A vault metadata Reader role necessarily permits reading secret values.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 11: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: False</strong>
+    <span class="quiz-explanation">Metadata Reader and secret-value access are distinct.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="T" data-search="12 pim can make eligible human access time-bound and auditable. true pim supports eligible, time-bound elevation and auditing.">
+  <h4><span>12</span>PIM can make eligible human access time-bound and auditable.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 12: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: True</strong>
+    <span class="quiz-explanation">PIM supports eligible, time-bound elevation and auditing.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="F" data-search="13 pim automatically rotates an application&#x27;s client credentials. false credential rotation requires a separate lifecycle process.">
+  <h4><span>13</span>PIM automatically rotates an application&#x27;s client credentials.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 13: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: False</strong>
+    <span class="quiz-explanation">Credential rotation requires a separate lifecycle process.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="T" data-search="14 a management group can contain subscriptions and provide a policy assignment scope above them. true management groups sit above subscriptions.">
+  <h4><span>14</span>A management group can contain subscriptions and provide a policy assignment scope above them.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 14: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: True</strong>
+    <span class="quiz-explanation">Management groups sit above subscriptions.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="T" data-search="15 an initiative is a bundle of policy definitions that can share parameters. true initiatives group policies and commonly share parameters.">
+  <h4><span>15</span>An initiative is a bundle of policy definitions that can share parameters.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 15: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: True</strong>
+    <span class="quiz-explanation">Initiatives group policies and commonly share parameters.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="F" data-search="16 an `audit` policy effect by itself rejects a noncompliant create request. false audit records; it does not itself deny the request.">
+  <h4><span>16</span>An <code>Audit</code> policy effect by itself rejects a noncompliant create request.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 16: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: False</strong>
+    <span class="quiz-explanation">Audit records; it does not itself deny the request.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="T" data-search="17 `deployifnotexists` can require a remediation task and suitable managed identity permissions. true remediation needs permissions and often an identity/task.">
+  <h4><span>17</span><code>DeployIfNotExists</code> can require a remediation task and suitable managed identity permissions.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 17: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: True</strong>
+    <span class="quiz-explanation">Remediation needs permissions and often an identity/task.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="F" data-search="18 a policy exemption should be treated as permanent once a deployment is unblocked. false exemptions should have a reason, owner, controls, and expiry.">
+  <h4><span>18</span>A policy exemption should be treated as permanent once a deployment is unblocked.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 18: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: False</strong>
+    <span class="quiz-explanation">Exemptions should have a reason, owner, controls, and expiry.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="T" data-search="19 a `cannotdelete` lock generally allows ordinary updates while blocking deletion. true cannotdelete blocks deletion but generally permits updates.">
+  <h4><span>19</span>A <code>CanNotDelete</code> lock generally allows ordinary updates while blocking deletion.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 19: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: True</strong>
+    <span class="quiz-explanation">CanNotDelete blocks deletion but generally permits updates.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="T" data-search="20 a `readonly` lock can interfere with writes required by a remediation deployment. true readonly blocks writes, including some remediation writes.">
+  <h4><span>20</span>A <code>ReadOnly</code> lock can interfere with writes required by a remediation deployment.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 20: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: True</strong>
+    <span class="quiz-explanation">ReadOnly blocks writes, including some remediation writes.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="F" data-search="21 resource locks are an authorization replacement that can grant a denied principal access. false locks do not grant access or replace authorization.">
+  <h4><span>21</span>Resource locks are an authorization replacement that can grant a denied principal access.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 21: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: False</strong>
+    <span class="quiz-explanation">Locks do not grant access or replace authorization.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="T" data-search="22 tags are useful metadata but are not a reliable security boundary. true tags describe resources; they do not enforce access.">
+  <h4><span>22</span>Tags are useful metadata but are not a reliable security boundary.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 22: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: True</strong>
+    <span class="quiz-explanation">Tags describe resources; they do not enforce access.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="F" data-search="23 tags are guaranteed to propagate to every child resource created by every azure service. false propagation varies and often needs policy or automation.">
+  <h4><span>23</span>Tags are guaranteed to propagate to every child resource created by every Azure service.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 23: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: False</strong>
+    <span class="quiz-explanation">Propagation varies and often needs policy or automation.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="T" data-search="24 a policy initiative can standardize a baseline across multiple subscriptions under a management group. true initiative assignments can establish a multi-subscription baseline.">
+  <h4><span>24</span>A policy initiative can standardize a baseline across multiple subscriptions under a management group.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 24: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: True</strong>
+    <span class="quiz-explanation">Initiative assignments can establish a multi-subscription baseline.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="F" data-search="25 a certificate object is identical to a plain key vault secret in lifecycle semantics. false certificates include certificate-specific policy and lifecycle metadata.">
+  <h4><span>25</span>A certificate object is identical to a plain Key Vault secret in lifecycle semantics.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 25: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: False</strong>
+    <span class="quiz-explanation">Certificates include certificate-specific policy and lifecycle metadata.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="T" data-search="26 key vault keys can support cryptographic operations without an application retrieving raw key material. true key operations can be performed without exposing raw key material.">
+  <h4><span>26</span>Key Vault keys can support cryptographic operations without an application retrieving raw key material.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 26: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: True</strong>
+    <span class="quiz-explanation">Key operations can be performed without exposing raw key material.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="T" data-search="27 key vault secrets are versioned values that can be retrieved through data-plane authorization. true secrets have versions and require data-plane permission to read.">
+  <h4><span>27</span>Key Vault secrets are versioned values that can be retrieved through data-plane authorization.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 27: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: True</strong>
+    <span class="quiz-explanation">Secrets have versions and require data-plane permission to read.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="F" data-search="28 a key rotation policy guarantees that every dependent application immediately starts using the newest version. false consumers may cache or require explicit version/refresh behavior.">
+  <h4><span>28</span>A key rotation policy guarantees that every dependent application immediately starts using the newest version.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 28: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: False</strong>
+    <span class="quiz-explanation">Consumers may cache or require explicit version/refresh behavior.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="F" data-search="29 updating a password secret is sufficient to change the password accepted by the database that uses it. false the database must be updated and clients must reload/validate.">
+  <h4><span>29</span>Updating a password secret is sufficient to change the password accepted by the database that uses it.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 29: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: False</strong>
+    <span class="quiz-explanation">The database must be updated and clients must reload/validate.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="T" data-search="30 soft delete and purge protection address recovery and destructive purge risks, respectively. true soft delete aids recovery; purge protection blocks purge during retention.">
+  <h4><span>30</span>Soft delete and purge protection address recovery and destructive purge risks, respectively.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 30: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: True</strong>
+    <span class="quiz-explanation">Soft delete aids recovery; purge protection blocks purge during retention.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="F" data-search="31 purge protection is the same control as an rbac deny assignment. false purge protection is a vault safeguard, not an rbac deny assignment.">
+  <h4><span>31</span>Purge protection is the same control as an RBAC deny assignment.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 31: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: False</strong>
+    <span class="quiz-explanation">Purge protection is a vault safeguard, not an RBAC deny assignment.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="T" data-search="32 a private endpoint can make key vault traffic private without granting the caller permission to read a secret. true private networking and identity authorization are separate controls.">
+  <h4><span>32</span>A private endpoint can make Key Vault traffic private without granting the caller permission to read a secret.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 32: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: True</strong>
+    <span class="quiz-explanation">Private networking and identity authorization are separate controls.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="T" data-search="33 private dns is often needed for clients to resolve a private endpoint name to its private address. true dns must resolve the service name through the private endpoint path.">
+  <h4><span>33</span>Private DNS is often needed for clients to resolve a private endpoint name to its private address.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 33: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: True</strong>
+    <span class="quiz-explanation">DNS must resolve the service name through the private endpoint path.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="T" data-search="34 a key vault data-plane role can be correct while a missing route still prevents retrieval. true correct authorization cannot overcome missing connectivity.">
+  <h4><span>34</span>A Key Vault data-plane role can be correct while a missing route still prevents retrieval.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 34: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: True</strong>
+    <span class="quiz-explanation">Correct authorization cannot overcome missing connectivity.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="T" data-search="35 app configuration labels can represent environment variants without creating separate stores. true labels select environment/version variants within a store.">
+  <h4><span>35</span>App Configuration labels can represent environment variants without creating separate stores.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 35: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: True</strong>
+    <span class="quiz-explanation">Labels select environment/version variants within a store.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="F" data-search="36 an app configuration feature flag is an authorization mechanism for an administrative api. false feature flags control behavior, not permission.">
+  <h4><span>36</span>An App Configuration feature flag is an authorization mechanism for an administrative API.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 36: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: False</strong>
+    <span class="quiz-explanation">Feature flags control behavior, not permission.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="T" data-search="37 a key vault reference in app configuration is intended to keep the plaintext secret out of the key-value. true the key-value contains a reference rather than the secret plaintext.">
+  <h4><span>37</span>A Key Vault reference in App Configuration is intended to keep the plaintext secret out of the key-value.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 37: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: True</strong>
+    <span class="quiz-explanation">The key-value contains a reference rather than the secret plaintext.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="T" data-search="38 resolving a key vault reference requires the runtime identity to have suitable key vault access. true the resolving runtime identity needs key vault data access.">
+  <h4><span>38</span>Resolving a Key Vault reference requires the runtime identity to have suitable Key Vault access.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 38: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: True</strong>
+    <span class="quiz-explanation">The resolving runtime identity needs Key Vault data access.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="F" data-search="39 registering a refresh strategy guarantees that every process instance instantly observes a changed setting. false polling/cache and process timing mean refresh is not instantaneous.">
+  <h4><span>39</span>Registering a refresh strategy guarantees that every process instance instantly observes a changed setting.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 39: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: False</strong>
+    <span class="quiz-explanation">Polling/cache and process timing mean refresh is not instantaneous.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="T" data-search="40 a sentinel can coordinate refresh after a related group of settings is ready. true a sentinel can signal that a coherent set is ready.">
+  <h4><span>40</span>A sentinel can coordinate refresh after a related group of settings is ready.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 40: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: True</strong>
+    <span class="quiz-explanation">A sentinel can signal that a coherent set is ready.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="F" data-search="41 storing a database password directly in app configuration is preferable to using a key vault reference. false sensitive values belong in key vault; app configuration can reference them.">
+  <h4><span>41</span>Storing a database password directly in App Configuration is preferable to using a Key Vault reference.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 41: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: False</strong>
+    <span class="quiz-explanation">Sensitive values belong in Key Vault; App Configuration can reference them.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="T" data-search="42 azure monitor includes metrics, logs, alerts, and visualization capabilities. true monitor spans these telemetry and visualization capabilities.">
+  <h4><span>42</span>Azure Monitor includes metrics, logs, alerts, and visualization capabilities.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 42: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: True</strong>
+    <span class="quiz-explanation">Monitor spans these telemetry and visualization capabilities.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="T" data-search="43 application insights is primarily an application observability experience, not a directory role system. true application insights focuses on application performance/telemetry.">
+  <h4><span>43</span>Application Insights is primarily an application observability experience, not a directory role system.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 43: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: True</strong>
+    <span class="quiz-explanation">Application Insights focuses on application performance/telemetry.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="T" data-search="44 log analytics workspaces provide a common kql query surface for routed logs. true log analytics provides the workspace kql experience.">
+  <h4><span>44</span>Log Analytics workspaces provide a common KQL query surface for routed logs.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 44: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: True</strong>
+    <span class="quiz-explanation">Log Analytics provides the workspace KQL experience.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="F" data-search="45 a resource log is automatically queryable in every log analytics workspace without diagnostic settings. false diagnostic settings or another routing path are needed.">
+  <h4><span>45</span>A resource log is automatically queryable in every Log Analytics workspace without diagnostic settings.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 45: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: False</strong>
+    <span class="quiz-explanation">Diagnostic settings or another routing path are needed.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="T" data-search="46 activity log is designed chiefly for azure control-plane history such as resource writes. true activity log records azure management/control-plane activity.">
+  <h4><span>46</span>Activity Log is designed chiefly for Azure control-plane history such as resource writes.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 46: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: True</strong>
+    <span class="quiz-explanation">Activity Log records Azure management/control-plane activity.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="F" data-search="47 application request telemetry and activity log answer exactly the same operational question. false request telemetry and control-plane history answer different questions.">
+  <h4><span>47</span>Application request telemetry and Activity Log answer exactly the same operational question.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 47: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: False</strong>
+    <span class="quiz-explanation">Request telemetry and control-plane history answer different questions.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="T" data-search="48 a workbook is a visualization and analysis surface rather than the canonical storage location for telemetry. true workbooks visualize and analyze data stored/queryable elsewhere.">
+  <h4><span>48</span>A workbook is a visualization and analysis surface rather than the canonical storage location for telemetry.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 48: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: True</strong>
+    <span class="quiz-explanation">Workbooks visualize and analyze data stored/queryable elsewhere.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="T" data-search="49 metrics are generally numeric time series and can include dimensions. true metrics are numeric series and may be dimensioned.">
+  <h4><span>49</span>Metrics are generally numeric time series and can include dimensions.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 49: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: True</strong>
+    <span class="quiz-explanation">Metrics are numeric series and may be dimensioned.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="F" data-search="50 logs are always cheaper and lower latency than metrics for threshold alerts. false metrics are commonly more efficient for thresholds; logs provide richer context.">
+  <h4><span>50</span>Logs are always cheaper and lower latency than metrics for threshold alerts.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 50: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: False</strong>
+    <span class="quiz-explanation">Metrics are commonly more efficient for thresholds; logs provide richer context.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="T" data-search="51 a metric alert is usually a better fit than kql when the condition is a simple cpu threshold. true a native numeric metric threshold is the natural metric-alert case.">
+  <h4><span>51</span>A metric alert is usually a better fit than KQL when the condition is a simple CPU threshold.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 51: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: True</strong>
+    <span class="quiz-explanation">A native numeric metric threshold is the natural metric-alert case.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="T" data-search="52 a scheduled-query alert can express a correlation condition that requires kql. true kql alerts can join, correlate, and count contextual events.">
+  <h4><span>52</span>A scheduled-query alert can express a correlation condition that requires KQL.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 52: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: True</strong>
+    <span class="quiz-explanation">KQL alerts can join, correlate, and count contextual events.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="F" data-search="53 adding an unconstrained high-cardinality metric dimension is always harmless to cost and noise. false high cardinality can increase cost, series count, and alert noise.">
+  <h4><span>53</span>Adding an unconstrained high-cardinality metric dimension is always harmless to cost and noise.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 53: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: False</strong>
+    <span class="quiz-explanation">High cardinality can increase cost, series count, and alert noise.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="T" data-search="54 an alert runbook and owner are useful even when the alert query is technically correct. true ownership and response instructions make alerts actionable.">
+  <h4><span>54</span>An alert runbook and owner are useful even when the alert query is technically correct.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 54: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: True</strong>
+    <span class="quiz-explanation">Ownership and response instructions make alerts actionable.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="T" data-search="55 exporting activity log can support retention beyond the default viewing period. true export destinations can provide longer-term activity log retention.">
+  <h4><span>55</span>Exporting Activity Log can support retention beyond the default viewing period.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 55: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: True</strong>
+    <span class="quiz-explanation">Export destinations can provide longer-term Activity Log retention.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="T" data-search="56 otel traces, metrics, and logs are all observability signals. true these are the standard otel signal families used here.">
+  <h4><span>56</span>OTel traces, metrics, and logs are all observability signals.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 56: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: True</strong>
+    <span class="quiz-explanation">These are the standard OTel signal families used here.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="T" data-search="57 a trace is composed of spans that represent timed operations. true spans are timed units that compose a trace.">
+  <h4><span>57</span>A trace is composed of spans that represent timed operations.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 57: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: True</strong>
+    <span class="quiz-explanation">Spans are timed units that compose a trace.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="F" data-search="58 a span&#x27;s parent relationship is irrelevant to distributed trace reconstruction. false parent relationships are essential to reconstructing distributed work.">
+  <h4><span>58</span>A span&#x27;s parent relationship is irrelevant to distributed trace reconstruction.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 58: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: False</strong>
+    <span class="quiz-explanation">Parent relationships are essential to reconstructing distributed work.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="T" data-search="59 w3c `traceparent` can carry trace context across an http boundary. true `traceparent` is the w3c http trace-context header.">
+  <h4><span>59</span>W3C <code>traceparent</code> can carry trace context across an HTTP boundary.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 59: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: True</strong>
+    <span class="quiz-explanation"><code>traceparent</code> is the W3C HTTP trace-context header.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="F" data-search="60 a business correlation id is guaranteed to have the same semantics as an otel trace id. false a business id is supplementary and has different semantics.">
+  <h4><span>60</span>A business correlation ID is guaranteed to have the same semantics as an OTel trace ID.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 60: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: False</strong>
+    <span class="quiz-explanation">A business ID is supplementary and has different semantics.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="T" data-search="61 head sampling can discard a trace before later evidence shows that it was slow. true head sampling decides before later latency/error evidence exists.">
+  <h4><span>61</span>Head sampling can discard a trace before later evidence shows that it was slow.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 61: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: True</strong>
+    <span class="quiz-explanation">Head sampling decides before later latency/error evidence exists.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="T" data-search="62 tail sampling can make decisions after a trace&#x27;s spans have been observed, at the cost of buffering. true tail sampling waits for evidence and therefore buffers state.">
+  <h4><span>62</span>Tail sampling can make decisions after a trace&#x27;s spans have been observed, at the cost of buffering.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 62: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: True</strong>
+    <span class="quiz-explanation">Tail sampling waits for evidence and therefore buffers state.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="T" data-search="63 sampling reduces volume but can hide rare failures if error retention is not designed. true lower volume can omit rare events without error-aware policy.">
+  <h4><span>63</span>Sampling reduces volume but can hide rare failures if error retention is not designed.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 63: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: True</strong>
+    <span class="quiz-explanation">Lower volume can omit rare events without error-aware policy.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="F" data-search="64 high-cardinality user input is a safe default for otel metric labels. false unbounded cardinality is costly and harms telemetry systems.">
+  <h4><span>64</span>High-cardinality user input is a safe default for OTel metric labels.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 64: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: False</strong>
+    <span class="quiz-explanation">Unbounded cardinality is costly and harms telemetry systems.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="T" data-search="65 an exporter that is backpressured can contribute to dropped telemetry and should be monitored. true export pressure can cause drops and should be observable.">
+  <h4><span>65</span>An exporter that is backpressured can contribute to dropped telemetry and should be monitored.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 65: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: True</strong>
+    <span class="quiz-explanation">Export pressure can cause drops and should be observable.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="T" data-search="66 kql uses pipes to pass the result of one operator to the next. true kql operators are chained with pipes.">
+  <h4><span>66</span>KQL uses pipes to pass the result of one operator to the next.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 66: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: True</strong>
+    <span class="quiz-explanation">KQL operators are chained with pipes.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="T" data-search="67 putting a selective time `where` near the start of a kql query often reduces work. true early selective filtering commonly reduces scanned and processed data.">
+  <h4><span>67</span>Putting a selective time <code>where</code> near the start of a KQL query often reduces work.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 67: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: True</strong>
+    <span class="quiz-explanation">Early selective filtering commonly reduces scanned and processed data.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="F" data-search="68 `project` is primarily used to aggregate rows into groups. false `project` selects columns; `summarize` aggregates.">
+  <h4><span>68</span><code>project</code> is primarily used to aggregate rows into groups.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 68: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: False</strong>
+    <span class="quiz-explanation"><code>project</code> selects columns; <code>summarize</code> aggregates.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="T" data-search="69 `extend` can calculate a derived column without removing the existing columns. true `extend` adds computed columns while retaining existing columns.">
+  <h4><span>69</span><code>extend</code> can calculate a derived column without removing the existing columns.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 69: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: True</strong>
+    <span class="quiz-explanation"><code>extend</code> adds computed columns while retaining existing columns.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="T" data-search="70 `summarize count() by name` returns one aggregate row per distinct name. true the grouping key produces an aggregate row for each distinct name.">
+  <h4><span>70</span><code>summarize count() by Name</code> returns one aggregate row per distinct Name.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 70: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: True</strong>
+    <span class="quiz-explanation">The grouping key produces an aggregate row for each distinct Name.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="F" data-search="71 `join` always preserves exactly one output row for each left-side row. false matching multiplicity can produce multiple output rows per left row.">
+  <h4><span>71</span><code>join</code> always preserves exactly one output row for each left-side row.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 71: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: False</strong>
+    <span class="quiz-explanation">Matching multiplicity can produce multiple output rows per left row.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="T" data-search="72 a many-to-many join can multiply rows and inflate a later count. true many-to-many matches multiply combinations.">
+  <h4><span>72</span>A many-to-many join can multiply rows and inflate a later count.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 72: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: True</strong>
+    <span class="quiz-explanation">Many-to-many matches multiply combinations.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="T" data-search="73 `union` combines rows from multiple inputs rather than matching columns by a key. true `union` stacks input rows.">
+  <h4><span>73</span><code>union</code> combines rows from multiple inputs rather than matching columns by a key.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 73: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: True</strong>
+    <span class="quiz-explanation"><code>union</code> stacks input rows.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="T" data-search="74 `parse_json` is useful when a column contains json represented as a dynamic value or string. true `parse_json` extracts fields from json content.">
+  <h4><span>74</span><code>parse_json</code> is useful when a column contains JSON represented as a dynamic value or string.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 74: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: True</strong>
+    <span class="quiz-explanation"><code>parse_json</code> extracts fields from JSON content.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="T" data-search="75 `make-series` can create regularly stepped time buckets for time-series analysis. true `make-series` creates regular time steps.">
+  <h4><span>75</span><code>make-series</code> can create regularly stepped time buckets for time-series analysis.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 75: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: True</strong>
+    <span class="quiz-explanation"><code>make-series</code> creates regular time steps.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="T" data-search="76 `bin(timegenerated, 5m)` helps align events to comparable five-minute buckets. true `bin` aligns timestamps to fixed intervals.">
+  <h4><span>76</span><code>bin(TimeGenerated, 5m)</code> helps align events to comparable five-minute buckets.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 76: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: True</strong>
+    <span class="quiz-explanation"><code>bin</code> aligns timestamps to fixed intervals.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="F" data-search="77 filtering after an expensive many-table join is always equivalent in cost to filtering before it. false filtering early can substantially reduce join cost.">
+  <h4><span>77</span>Filtering after an expensive many-table join is always equivalent in cost to filtering before it.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 77: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: False</strong>
+    <span class="quiz-explanation">Filtering early can substantially reduce join cost.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="T" data-search="78 `coalesce` can provide a fallback when an expected value is null. true `coalesce` returns the first usable non-null value.">
+  <h4><span>78</span><code>coalesce</code> can provide a fallback when an expected value is null.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 78: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: True</strong>
+    <span class="quiz-explanation"><code>coalesce</code> returns the first usable non-null value.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="T" data-search="79 kql `summarize` can calculate percentiles such as p95 for latency. true percentile aggregations such as p95 are supported.">
+  <h4><span>79</span>KQL <code>summarize</code> can calculate percentiles such as p95 for latency.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 79: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: True</strong>
+    <span class="quiz-explanation">Percentile aggregations such as p95 are supported.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="F" data-search="80 a kql query that returns rows proves that an alert rule has the correct evaluation window and severity. false rule frequency, window, severity, and data delay are separate configuration concerns.">
+  <h4><span>80</span>A KQL query that returns rows proves that an alert rule has the correct evaluation window and severity.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 80: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: False</strong>
+    <span class="quiz-explanation">Rule frequency, window, severity, and data delay are separate configuration concerns.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="T" data-search="81 a system-assigned identity is usually the simpler choice when exactly one resource owns the identity lifecycle. true lifecycle coupling is simple for one owning resource.">
+  <h4><span>81</span>A system-assigned identity is usually the simpler choice when exactly one resource owns the identity lifecycle.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 81: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: True</strong>
+    <span class="quiz-explanation">Lifecycle coupling is simple for one owning resource.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="T" data-search="82 a user-assigned identity is often useful when blue/green instances need stable permissions. true stable identity permissions can span deployment instances.">
+  <h4><span>82</span>A user-assigned identity is often useful when blue/green instances need stable permissions.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 82: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: True</strong>
+    <span class="quiz-explanation">Stable identity permissions can span deployment instances.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="F" data-search="83 assigning a role at subscription scope is always safer than assigning it at a vault scope. false narrow resource scope is usually safer than broad subscription scope.">
+  <h4><span>83</span>Assigning a role at subscription scope is always safer than assigning it at a vault scope.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 83: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: False</strong>
+    <span class="quiz-explanation">Narrow resource scope is usually safer than broad subscription scope.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="T" data-search="84 a policy `deny` can prevent a new noncompliant configuration but does not automatically repair every existing resource. true deny prevents requests; remediation of existing state is separate.">
+  <h4><span>84</span>A policy <code>Deny</code> can prevent a new noncompliant configuration but does not automatically repair every existing resource.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 84: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: True</strong>
+    <span class="quiz-explanation">Deny prevents requests; remediation of existing state is separate.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="T" data-search="85 a lock can block an operator who otherwise has sufficient rbac permission to delete the resource. true a lock can override an otherwise authorized destructive operation.">
+  <h4><span>85</span>A lock can block an operator who otherwise has sufficient RBAC permission to delete the resource.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 85: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: True</strong>
+    <span class="quiz-explanation">A lock can override an otherwise authorized destructive operation.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="F" data-search="86 a tag named `owner=finance` does not itself grant finance permission to operate a resource. false a tag has no inherent authorization effect.">
+  <h4><span>86</span>A tag named <code>Owner=Finance</code> does not itself grant Finance permission to operate a resource.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 86: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: False</strong>
+    <span class="quiz-explanation">A tag has no inherent authorization effect.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="T" data-search="87 a rotation runbook should include validation of the dependent consumer and a rollback or overlap strategy. true safe rotation validates the consumer and plans overlap/rollback.">
+  <h4><span>87</span>A rotation runbook should include validation of the dependent consumer and a rollback or overlap strategy.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 87: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: True</strong>
+    <span class="quiz-explanation">Safe rotation validates the consumer and plans overlap/rollback.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="F" data-search="88 a private endpoint removes the need to configure private dns and network routes. false dns, routes, and other network configuration remain necessary.">
+  <h4><span>88</span>A private endpoint removes the need to configure private DNS and network routes.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 88: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: False</strong>
+    <span class="quiz-explanation">DNS, routes, and other network configuration remain necessary.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="F" data-search="89 a sentinel should be changed before the related settings are safely available to consumers. false change the sentinel after the related values are ready.">
+  <h4><span>89</span>A sentinel should be changed before the related settings are safely available to consumers.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 89: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: False</strong>
+    <span class="quiz-explanation">Change the sentinel after the related values are ready.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="T" data-search="90 feature flag targeting can affect behavior without replacing authorization checks. true targeting changes rollout behavior, not authorization.">
+  <h4><span>90</span>Feature flag targeting can affect behavior without replacing authorization checks.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 90: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: True</strong>
+    <span class="quiz-explanation">Targeting changes rollout behavior, not authorization.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="T" data-search="91 a metric alert and a log-query alert can have different detection latency because their data paths differ. true metrics and logs have different ingestion and evaluation paths.">
+  <h4><span>91</span>A metric alert and a log-query alert can have different detection latency because their data paths differ.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 91: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: True</strong>
+    <span class="quiz-explanation">Metrics and logs have different ingestion and evaluation paths.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="F" data-search="92 querying a workspace table is a substitute for enabling diagnostic settings on the resource. false routing/diagnostic settings determine whether resource logs arrive.">
+  <h4><span>92</span>Querying a workspace table is a substitute for enabling diagnostic settings on the resource.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 92: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: False</strong>
+    <span class="quiz-explanation">Routing/diagnostic settings determine whether resource logs arrive.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="T" data-search="93 preserving `traceparent` through a queue consumer can connect producer and consumer spans. true context propagation connects the span trees across the queue boundary.">
+  <h4><span>93</span>Preserving <code>traceparent</code> through a queue consumer can connect producer and consumer spans.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 93: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: True</strong>
+    <span class="quiz-explanation">Context propagation connects the span trees across the queue boundary.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="T" data-search="94 sampling policy should consider errors and rare slow traces, not only average volume. true error-aware sampling avoids losing the most useful evidence.">
+  <h4><span>94</span>Sampling policy should consider errors and rare slow traces, not only average volume.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 94: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: True</strong>
+    <span class="quiz-explanation">Error-aware sampling avoids losing the most useful evidence.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="F" data-search="95 putting secrets in span attributes is acceptable if the trace backend has rbac. false rbac does not make secret attributes safe; redact them.">
+  <h4><span>95</span>Putting secrets in span attributes is acceptable if the trace backend has RBAC.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 95: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: False</strong>
+    <span class="quiz-explanation">RBAC does not make secret attributes safe; redact them.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="T" data-search="96 `summarize` before a join can help prevent one-to-many detail rows from inflating an aggregate. true pre-aggregation can avoid one-to-many join multiplication.">
+  <h4><span>96</span><code>summarize</code> before a join can help prevent one-to-many detail rows from inflating an aggregate.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 96: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: True</strong>
+    <span class="quiz-explanation">Pre-aggregation can avoid one-to-many join multiplication.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="T" data-search="97 a left outer join can retain unmatched rows from its left input. true left outer joins retain unmatched left-side rows.">
+  <h4><span>97</span>A left outer join can retain unmatched rows from its left input.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 97: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: True</strong>
+    <span class="quiz-explanation">Left outer joins retain unmatched left-side rows.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="T" data-search="98 a workbook can combine multiple queries and visualizations for an operational audience. true workbooks can assemble queries and visualizations.">
+  <h4><span>98</span>A workbook can combine multiple queries and visualizations for an operational audience.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 98: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: True</strong>
+    <span class="quiz-explanation">Workbooks can assemble queries and visualizations.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="F" data-search="99 a successful metric alert evaluation proves that the underlying logs contain the same data. false metrics and logs are separate signals and may differ in coverage/timing.">
+  <h4><span>99</span>A successful metric alert evaluation proves that the underlying logs contain the same data.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 99: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: False</strong>
+    <span class="quiz-explanation">Metrics and logs are separate signals and may differ in coverage/timing.</span>
+  </div>
+</article>
+<article class="quiz-item" data-answer="T" data-search="100 least privilege includes choosing an appropriate role, scope, and duration rather than only choosing a principal. true least privilege is role plus scope plus appropriate duration.">
+  <h4><span>100</span>Least privilege includes choosing an appropriate role, scope, and duration rather than only choosing a principal.</h4>
+  <div class="quiz-choices" role="group" aria-label="Question 100: choose true or false">
+    <button class="quiz-choice" data-choice="T" type="button">True</button>
+    <button class="quiz-choice" data-choice="F" type="button">False</button>
+  </div>
+  <div class="quiz-feedback" role="status" hidden>
+    <strong class="quiz-result">Answer: True</strong>
+    <span class="quiz-explanation">Least privilege is role plus scope plus appropriate duration.</span>
+  </div>
+</article></div>
+    <div class="empty" id="study-empty"><h3>No study content matches that search</h3><p>Try a broader identity, governance, monitoring, or KQL term.</p></div>
+  </section>
+  <section class="study-sources study-topic" id="study-sources">
+    <h3>Official Microsoft Learn links</h3>
+    <ul class="study-list"><li><a href="https://learn.microsoft.com/en-us/credentials/certifications/resources/study-guides/ai-200" target="_blank" rel="noreferrer">AI-200 study guide</a></li><li><a href="https://learn.microsoft.com/en-us/entra/fundamentals/whatis" target="_blank" rel="noreferrer">Microsoft Entra ID fundamentals</a></li><li><a href="https://learn.microsoft.com/en-us/entra/identity/managed-identities-azure-resources/overview" target="_blank" rel="noreferrer">Managed identities</a></li><li><a href="https://learn.microsoft.com/en-us/entra/workload-id/workload-identity-federation" target="_blank" rel="noreferrer">Workload identity federation</a></li><li><a href="https://learn.microsoft.com/en-us/azure/role-based-access-control/overview" target="_blank" rel="noreferrer">Azure RBAC</a></li><li><a href="https://learn.microsoft.com/en-us/entra/identity/role-based-access-control/permissions-reference" target="_blank" rel="noreferrer">Microsoft Entra roles</a></li><li><a href="https://learn.microsoft.com/en-us/azure/governance/policy/overview" target="_blank" rel="noreferrer">Azure Policy</a></li><li><a href="https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/lock-resources" target="_blank" rel="noreferrer">Resource locks</a></li><li><a href="https://learn.microsoft.com/en-us/entra/id-governance/privileged-identity-management/pim-configure" target="_blank" rel="noreferrer">Privileged Identity Management</a></li><li><a href="https://learn.microsoft.com/en-us/azure/key-vault/general/overview" target="_blank" rel="noreferrer">Key Vault overview</a></li><li><a href="https://learn.microsoft.com/en-us/azure/key-vault/keys/rotation-policy" target="_blank" rel="noreferrer">Key rotation policy</a></li><li><a href="https://learn.microsoft.com/en-us/azure/key-vault/general/soft-delete-overview" target="_blank" rel="noreferrer">Soft delete and purge protection</a></li><li><a href="https://learn.microsoft.com/en-us/azure/key-vault/general/private-link-service" target="_blank" rel="noreferrer">Key Vault Private Link</a></li><li><a href="https://learn.microsoft.com/en-us/azure/azure-app-configuration/overview" target="_blank" rel="noreferrer">App Configuration overview</a></li><li><a href="https://learn.microsoft.com/en-us/azure/azure-app-configuration/concept-key-value" target="_blank" rel="noreferrer">Labels and key-values</a></li><li><a href="https://learn.microsoft.com/en-us/azure/azure-app-configuration/concept-feature-management" target="_blank" rel="noreferrer">Feature flags</a></li><li><a href="https://learn.microsoft.com/en-us/azure/azure-app-configuration/reload-key-vault-secrets-dotnet" target="_blank" rel="noreferrer">Key Vault reference refresh</a></li><li><a href="https://learn.microsoft.com/en-us/azure/azure-monitor/overview" target="_blank" rel="noreferrer">Azure Monitor overview</a></li><li><a href="https://learn.microsoft.com/en-us/azure/azure-monitor/app/app-insights-overview" target="_blank" rel="noreferrer">Application Insights overview</a></li><li><a href="https://learn.microsoft.com/en-us/azure/azure-monitor/app/opentelemetry-overview" target="_blank" rel="noreferrer">OpenTelemetry for Azure Monitor</a></li><li><a href="https://learn.microsoft.com/en-us/azure/azure-monitor/logs/log-analytics-overview" target="_blank" rel="noreferrer">Log Analytics overview</a></li><li><a href="https://learn.microsoft.com/en-us/azure/azure-monitor/essentials/activity-log" target="_blank" rel="noreferrer">Azure Activity Log</a></li><li><a href="https://learn.microsoft.com/en-us/azure/azure-monitor/alerts/alerts-overview" target="_blank" rel="noreferrer">Azure Monitor alerts</a></li><li><a href="https://learn.microsoft.com/en-us/azure/azure-monitor/visualize/workbooks-overview" target="_blank" rel="noreferrer">Azure workbooks</a></li><li><a href="https://learn.microsoft.com/en-us/kusto/query/?view=microsoft-fabric" target="_blank" rel="noreferrer">Kusto Query Language</a></li><li><a href="https://learn.microsoft.com/en-us/kusto/query/kql-quick-reference" target="_blank" rel="noreferrer">KQL quick reference</a></li></ul>
+  </section>
+</section>
   <footer>
     <p><b>How to use this guide.</b> AI-200 is a <i>developer</i> exam &mdash; the question bank tests SDK calls, trigger/binding names, connection patterns and CLI flags directly. Read the exam callout <i>before</i> the steps, work the Portal path first for orientation, then rebuild it with the CLI and Python panes so the SDK method names and parameters stick. Read the traps <i>after</i>.</p>
     <p><b>Cost warning.</b> AKS clusters, Container Apps environments, Cosmos DB throughput, Azure Database for PostgreSQL flexible servers and Managed Redis bill continuously whether or not you send traffic. Run the cleanup block at the end of each lab, and prefer deleting the whole resource group when you are done.</p>
@@ -2815,6 +4142,47 @@ document.getElementById('expand').addEventListener('click',function(){
   var any=document.querySelector('.lab.open');
   document.querySelectorAll('.lab').forEach(function(l){ l.classList.toggle('open', !any); });
   this.textContent = any ? 'Expand all' : 'Collapse all';
+});
+function updateQuizProgress(){
+  var answered=document.querySelectorAll('.quiz-item[data-answered="true"]').length;
+  document.getElementById('quiz-progress').textContent=answered+' of 100 answered';
+}
+function revealAnswer(item, choice){
+  var answer=item.dataset.answer;
+  item.querySelectorAll('.quiz-choice').forEach(function(button){
+    button.classList.remove('correct','wrong');
+    if(button.dataset.choice===answer){ button.classList.add('correct'); }
+    if(choice && button.dataset.choice===choice && choice!==answer){ button.classList.add('wrong'); }
+  });
+  item.querySelector('.quiz-feedback').hidden=false;
+  if(choice){ item.dataset.answered='true'; }
+}
+document.querySelectorAll('.quiz-choice').forEach(function(button){
+  button.addEventListener('click',function(){
+    revealAnswer(button.closest('.quiz-item'),button.dataset.choice);
+    updateQuizProgress();
+  });
+});
+document.getElementById('show-answers').addEventListener('click',function(){
+  document.querySelectorAll('.quiz-item').forEach(function(item){ revealAnswer(item); });
+});
+document.getElementById('reset-quiz').addEventListener('click',function(){
+  document.querySelectorAll('.quiz-item').forEach(function(item){
+    delete item.dataset.answered;
+    item.querySelectorAll('.quiz-choice').forEach(function(button){ button.classList.remove('correct','wrong'); });
+    item.querySelector('.quiz-feedback').hidden=true;
+  });
+  updateQuizProgress();
+});
+document.getElementById('study-q').addEventListener('input',function(e){
+  var q=e.target.value.toLowerCase().trim(), shown=0;
+  document.querySelectorAll('.study-topic,.quiz-item').forEach(function(item){
+    var searchable=item.dataset.search || item.textContent.toLowerCase();
+    var visible=!q || searchable.indexOf(q)>-1;
+    item.style.display=visible?'':'none';
+    if(visible){ shown++; }
+  });
+  document.getElementById('study-empty').style.display=shown?'none':'block';
 });
 (function(){
   var btn=document.getElementById('theme'), root=document.documentElement;
