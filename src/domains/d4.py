@@ -17,8 +17,8 @@ LABS = [
 "level": "Foundational",
 "objective": "Create an RBAC-based Key Vault, store and retrieve versioned secrets, and model manual plus event-driven rotation.",
 "exam": [
- "Modern Key Vault authorization is <b>Azure RBAC</b>, not vault access policies. Read secrets with <b>Key Vault Secrets User</b>; create / rotate them with <b>Key Vault Secrets Officer</b>.",
- "A secret update creates a <b>new version</b>. Apps that call <code>get_secret(name)</code> receive the latest enabled version; apps pinned to a version keep using that version until changed.",
+ "Azure RBAC is the recommended authorization model for new vaults; access policies remain supported for legacy compatibility. Read secrets with <b>Key Vault Secrets User</b>; create / rotate them with <b>Key Vault Secrets Officer</b>.",
+ "A secret update creates a <b>new version</b>. A versionless <code>get_secret(name)</code> retrieves the latest version, not the latest enabled version. If it is disabled, the call fails instead of falling back; a version-pinned client keeps using its specified version.",
  "<b>Soft-delete</b> is always on for new vaults. <b>Purge protection</b> is optional, irreversible once enabled, and commonly required for production / compliance.",
  "Rotation pattern: set an expiry on the secret, subscribe Key Vault events to <code>Microsoft.KeyVault.SecretNearExpiry</code>, and invoke an Azure Function that writes a new version.",
  "Secret values should be retrieved at runtime through <code>DefaultAzureCredential</code>; never copy them into app settings, source code or container images.",
@@ -83,9 +83,10 @@ az keyvault secret set --vault-name $KV \
 az keyvault secret list-versions --vault-name $KV \
   --name openai-api-key -o table
 
-# Reader role for an app / managed identity: can get/list secret values.
+# Reader can retrieve values individually; list operations return metadata only.
 az role assignment create \
-  --assignee <app-principal-id> \
+  --assignee-object-id <app-managed-identity-object-id> \
+  --assignee-principal-type ServicePrincipal \
   --role "Key Vault Secrets User" \
   --scope $VAULT_ID
 
@@ -115,7 +116,7 @@ client = SecretClient(
     credential=credential,
 )
 
-# Read the latest enabled version.
+# Read the latest version. This does not search backward for an enabled version.
 latest = client.get_secret(secret_name)
 print(f"Using {secret_name} version {latest.properties.version}")
 
@@ -159,7 +160,8 @@ def rotate_on_near_expiry(event):
  "A Key Vault <b>reference</b> or App Configuration Key Vault reference stores a URI, not the secret value. The consuming app still needs permission to the vault.",
  "A near-expiry event does not rotate anything by itself \u2014 Event Grid only notifies; your Function performs the credential replacement and <code>set_secret</code> call.",
 ],
-"cleanup": r"""az group delete -n rg-ai200-secure --yes --no-wait""",
+"cleanup": r"""# Deferred: Labs 4.2 and 4.3 reuse this vault and resource group.
+# Run the consolidated secure-resource cleanup after Lab 4.3.""",
 },
 # ---------------------------------------------------------------- 4.2
 {
@@ -173,9 +175,9 @@ def rotate_on_near_expiry(event):
  "<b>Labels</b> separate environments or rings: the same key can have label <code>dev</code>, <code>test</code> and <code>prod</code> with different values.",
  "Feature flags are first-class App Configuration entries and can be labeled just like key-values.",
  "A <b>Key Vault reference</b> stores the secret URI in App Configuration. The app resolves the secret at runtime and needs <b>Key Vault Secrets User</b> on the vault.",
- "Dynamic refresh uses a watched <b>sentinel key</b>: update many settings, then change <code>Settings:Sentinel</code> so clients reload as one coherent batch.",
+ "Dynamic configuration can use a watched <b>sentinel key</b> for coherent App Configuration reloads. Rotation of a versionless Key Vault secret is independent: configure <code>secret_refresh_interval</code> and call <code>refresh()</code> during application activity.",
 ],
-"prereq": "An App Configuration store and a Key Vault secret from Lab 4.1. For Python: <code>pip install azure-identity azure-appconfiguration azure-keyvault-secrets</code>.",
+"prereq": "An App Configuration store and a Key Vault secret from Lab 4.1. For Python: <code>pip install \"azure-appconfiguration-provider&gt;=2.5.0,&lt;3\" azure-identity</code>.",
 "portal": [
  "##Create the store",
  "Azure portal \u2192 search <b>App Configuration</b> \u2192 <b>+ Create</b>. RG <code>rg-ai200-secure</code>, name <code>ai200appcfg&lt;unique&gt;</code>, region near the app.",
@@ -193,7 +195,7 @@ def rotate_on_near_expiry(event):
 "cli": r"""RG=rg-ai200-secure
 LOC=eastus
 APPCFG=ai200appcfg$RANDOM
-KV=<your-keyvault-name>
+KV="<your-keyvault-name>"
 
 az group create -n $RG -l $LOC
 az appconfig create -g $RG -n $APPCFG -l $LOC --sku Standard
@@ -228,109 +230,102 @@ az appconfig feature enable --name $APPCFG --auth-mode login \
   --feature BetaChat --label dev --yes
 
 # --- Key Vault reference: reference only, not the secret value -------
-SECRET_ID=$(az keyvault secret show --vault-name $KV \
+# Key Vault returns a versioned ID; remove the final /<version> segment.
+VERSIONED_SECRET_ID=$(az keyvault secret show --vault-name "$KV" \
   --name openai-api-key --query id -o tsv)
+SECRET_URI="${VERSIONED_SECRET_ID%/*}"
 
 az appconfig kv set-keyvault --name $APPCFG --auth-mode login \
   --key Secrets:OpenAIKey --label dev \
-  --secret-identifier "$SECRET_ID" --yes
+  --secret-identifier "$SECRET_URI" --yes
 
 az appconfig kv list --name $APPCFG --auth-mode login \
   --label dev -o table
 
-# Runtime app identity needs read access to BOTH services.
-az role assignment create --assignee <app-principal-id> \
-  --role "App Configuration Data Reader" --scope $STORE_ID
-az role assignment create --assignee <app-principal-id> \
+# The identity resolving configuration needs data access to both services.
+APP_PRINCIPAL_ID="<app-managed-identity-object-id>"
+VAULT_ID=$(az keyvault show -g "$RG" -n "$KV" --query id -o tsv)
+
+az role assignment create \
+  --assignee-object-id "$APP_PRINCIPAL_ID" \
+  --assignee-principal-type ServicePrincipal \
+  --role "App Configuration Data Reader" \
+  --scope "$STORE_ID"
+
+az role assignment create \
+  --assignee-object-id "$APP_PRINCIPAL_ID" \
+  --assignee-principal-type ServicePrincipal \
   --role "Key Vault Secrets User" \
-  --scope $(az keyvault show -n $KV --query id -o tsv)""",
-"code": r"""# pip install azure-identity azure-appconfiguration azure-keyvault-secrets
-# This is the sentinel refresh pattern without storing secrets in App Config.
+  --scope "$VAULT_ID"
+""",
+"code": r"""# pip install "azure-appconfiguration-provider>=2.5.0,<3" azure-identity
 
-import json
 import os
-from urllib.parse import urlparse
 
-from azure.appconfiguration import AzureAppConfigurationClient
+from azure.appconfiguration.provider import SettingSelector, WatchKey, load
 from azure.identity import DefaultAzureCredential
-from azure.keyvault.secrets import SecretClient
 
-endpoint = os.environ["APPCONFIG_ENDPOINT"]   # e.g. https://name.azconfig.io
+endpoint = os.environ["APPCONFIG_ENDPOINT"]
 label = os.environ.get("APPCONFIG_LABEL", "dev")
-
 credential = DefaultAzureCredential()
-client = AzureAppConfigurationClient(base_url=endpoint, credential=credential)
 
-_config = {}
-_sentinel_etag = None
+config = load(
+    endpoint=endpoint,
+    credential=credential,
+    selects=[
+        SettingSelector(key_filter="Settings:*", label_filter=label),
+        SettingSelector(key_filter="Secrets:*", label_filter=label),
+    ],
+    trim_prefixes=["Settings:", "Secrets:"],
+
+    # Resolve Key Vault references with the same identity.
+    keyvault_credential=credential,
+
+    # Re-resolve versionless secrets when refresh() is called after this interval,
+    # even when no App Configuration key-value changed.
+    secret_refresh_interval=300,
+
+    # WatchKey uses the original key and label.
+    refresh_on=[WatchKey("Settings:Sentinel", label)],
+    refresh_interval=30,
+    refresh_enabled=True,
+
+    feature_flag_enabled=True,
+    feature_flag_selectors=[
+        SettingSelector(key_filter="BetaChat", label_filter=label),
+    ],
+    feature_flag_refresh_enabled=True,
+)
 
 
-def _read_key_vault_reference(setting):
-    # App Configuration stores JSON like {"uri":"https://vault.vault.azure.net/secrets/name/version"}.
-    uri = json.loads(setting.value)["uri"]
-    parsed = urlparse(uri)
-    parts = [p for p in parsed.path.split("/") if p]
-    vault_url = f"{parsed.scheme}://{parsed.netloc}"
-    secret_name = parts[1]
-    secret_version = parts[2] if len(parts) > 2 else None
-    return SecretClient(vault_url, credential).get_secret(secret_name, secret_version).value
+def current_values():
+    # Call during application activity. Before an interval expires this returns
+    # without issuing the corresponding service request.
+    config.refresh()
 
-
-def load_all():
-    global _config, _sentinel_etag
-
-    values = {}
-    for setting in client.list_configuration_settings(
-        key_filter="Settings:*",
-        label_filter=label,
-    ):
-        short_key = setting.key.removeprefix("Settings:")
-        values[short_key] = setting.value
-
-    secret_ref = client.get_configuration_setting(
-        key="Secrets:OpenAIKey",
-        label=label,
+    flags = config["feature_management"]["feature_flags"]
+    beta_enabled = next(
+        (flag["enabled"] for flag in flags if flag["id"] == "BetaChat"),
+        False,
     )
-    values["OpenAIKey"] = _read_key_vault_reference(secret_ref)
 
-    flag = client.get_configuration_setting(
-        key=".appconfig.featureflag/BetaChat",
-        label=label,
-    )
-    values["BetaChat"] = json.loads(flag.value)["enabled"]
-
-    sentinel = client.get_configuration_setting(
-        key="Settings:Sentinel",
-        label=label,
-    )
-    _sentinel_etag = sentinel.etag
-    _config = values
-    return values
+    # Resolve the secret but never print or copy it into app settings.
+    openai_key = config["OpenAIKey"]
+    return config["ModelDeployment"], beta_enabled, openai_key
 
 
-def refresh_if_needed():
-    # Cheap check: one watched key. If unchanged, keep the cached config.
-    global _sentinel_etag
-    sentinel = client.get_configuration_setting(
-        key="Settings:Sentinel",
-        label=label,
-    )
-    if sentinel.etag != _sentinel_etag:
-        return load_all()
-    return _config
-
-
-config = load_all()
-print(config["ModelDeployment"], "beta=", config["BetaChat"])""",
+model, beta_enabled, openai_key = current_values()
+print(model, "beta=", beta_enabled)""",
 "code_label": "Python / SDK",
 "traps": [
  "Labels are not hierarchy. <code>Settings:ModelDeployment</code> with label <code>prod</code> is a different setting version than the same key with label <code>dev</code>.",
  "App Configuration <b>access keys</b> work, but managed identity + <b>App Configuration Data Reader</b> is the secure answer for Azure-hosted apps.",
  "A Key Vault reference failing at runtime is usually a missing <b>Key Vault Secrets User</b> assignment for the app identity, not an App Configuration problem.",
- "Refreshing every key on every request is wasteful. Watch a <b>sentinel key</b>, then reload the full config only when its ETag changes.",
+ "A sentinel detects App Configuration changes; it does not by itself detect rotation behind an unchanged Key Vault reference. Use a <b>versionless</b> secret URI, <code>secret_refresh_interval</code>, and activity-driven <code>refresh()</code> calls.",
  "Feature flags live in App Configuration; Key Vault is not a feature-management service.",
 ],
-"cleanup": r"""az appconfig delete -g rg-ai200-secure -n <app-configuration-name> --yes""",
+"cleanup": r"""# Deferred: retain the App Configuration store through Lab 4.3.
+# Run the consolidated secure-resource cleanup after Lab 4.3.""",
 },
 # ---------------------------------------------------------------- 4.3
 {
@@ -356,52 +351,81 @@ print(config["ModelDeployment"], "beta=", config["BetaChat"])""",
  "Do not add a vault access policy unless the vault is explicitly using the legacy access-policy model.",
  "##Grant Cosmos DB data-plane access",
  "Cosmos DB account \u2192 <b>Access control (IAM)</b> controls management-plane access; for NoSQL data access use the account's <b>Data Explorer / Role assignments</b> or the CLI SQL role assignment.",
- "Assign <b>Cosmos DB Built-in Data Reader</b> at scope <code>/</code> for read-only SDK queries. Use Data Contributor only if the app writes items.",
+ "Assign <b>Cosmos DB Built-in Data Reader</b> at scope <code>/</code> to the app identity for read-only SDK queries. If you run the optional query locally, assign the same role separately to your signed-in developer identity. Use Data Contributor only if the app writes items.",
  "##Run locally and in Azure",
- "Local developer machine: run <code>az login</code>. Azure runtime: no login command and no secret; the SDK requests a token from the managed identity endpoint.",
+ "Local developer machine: run <code>az login</code> and grant that developer the required data-plane roles. Azure runtime: no login command and no secret; the SDK requests a token from the managed identity endpoint. Authentication never substitutes for authorization.",
 ],
-"cli": r"""RG=rg-ai200-secure
-APP=<your-webapp-name>
-KV=<your-keyvault-name>
-COSMOS=<your-cosmos-account>
+"cli": r"""LAB_RG=rg-ai200-secure
+APP_RG="<resource-group-containing-your-webapp>"
+COSMOS_RG="" # Optional: set to the resource group from Lab 2.1.
+APP="<your-webapp-name>"
+KV="<your-keyvault-name>"
+COSMOS="" # Optional: set to the account from Lab 2.1.
 UAMI=id-ai200-reader
 
+VAULT_ID=$(az keyvault show -g "$LAB_RG" -n "$KV" --query id -o tsv)
+
 # --- System-assigned managed identity ------------------------------
-az webapp identity assign -g $RG -n $APP
-SYSTEM_PRINCIPAL=$(az webapp identity show -g $RG -n $APP \
+az webapp identity assign -g "$APP_RG" -n "$APP"
+SYSTEM_PRINCIPAL_ID=$(az webapp identity show -g "$APP_RG" -n "$APP" \
   --query principalId -o tsv)
 
-VAULT_ID=$(az keyvault show -g $RG -n $KV --query id -o tsv)
 az role assignment create \
-  --assignee $SYSTEM_PRINCIPAL \
+  --assignee-object-id "$SYSTEM_PRINCIPAL_ID" \
+  --assignee-principal-type ServicePrincipal \
   --role "Key Vault Secrets User" \
-  --scope $VAULT_ID
+  --scope "$VAULT_ID"
 
-# --- User-assigned managed identity --------------------------------
-az identity create -g $RG -n $UAMI
-UAMI_ID=$(az identity show -g $RG -n $UAMI --query id -o tsv)
-UAMI_CLIENT_ID=$(az identity show -g $RG -n $UAMI --query clientId -o tsv)
-UAMI_PRINCIPAL_ID=$(az identity show -g $RG -n $UAMI --query principalId -o tsv)
+# --- User-assigned identity selected by AZURE_CLIENT_ID -------------
+az identity create -g "$LAB_RG" -n "$UAMI"
+UAMI_ID=$(az identity show -g "$LAB_RG" -n "$UAMI" --query id -o tsv)
+UAMI_CLIENT_ID=$(az identity show -g "$LAB_RG" -n "$UAMI" \
+  --query clientId -o tsv)
+UAMI_PRINCIPAL_ID=$(az identity show -g "$LAB_RG" -n "$UAMI" \
+  --query principalId -o tsv)
 
-az webapp identity assign -g $RG -n $APP --identities $UAMI_ID
+az webapp identity assign -g "$APP_RG" -n "$APP" \
+  --identities "$UAMI_ID"
 
-# Tell Azure Identity which user-assigned identity to use at runtime.
-az webapp config appsettings set -g $RG -n $APP \
-  --settings AZURE_CLIENT_ID=$UAMI_CLIENT_ID
+az webapp config appsettings set -g "$APP_RG" -n "$APP" \
+  --settings AZURE_CLIENT_ID="$UAMI_CLIENT_ID"
 
-# --- Cosmos DB for NoSQL data-plane RBAC ----------------------------
-# Reader role can query items but cannot write. This is NOT the same as ARM Reader.
-ROLE_ID=$(az cosmosdb sql role definition list -g $RG -a $COSMOS \
-  --query "[?roleName=='Cosmos DB Built-in Data Reader'].id | [0]" -o tsv)
+# The selected UAMI, not only the system identity, must read secrets.
+az role assignment create \
+  --assignee-object-id "$UAMI_PRINCIPAL_ID" \
+  --assignee-principal-type ServicePrincipal \
+  --role "Key Vault Secrets User" \
+  --scope "$VAULT_ID"
 
-az cosmosdb sql role assignment create -g $RG -a $COSMOS \
-  --scope "/" \
-  --principal-id $UAMI_PRINCIPAL_ID \
-  --role-definition-id $ROLE_ID
+# --- Optional Cosmos DB for NoSQL data-plane RBAC -------------------
+COSMOS_ROLE_ASSIGNMENT_ID=""
+COSMOS_LOCAL_ROLE_ASSIGNMENT_ID=""
+if [[ -n "$COSMOS_RG" && -n "$COSMOS" ]]; then
+  # Reproducible UUIDv5 values prevent duplicate assignments on reruns.
+  # The deployed app uses the user-assigned identity.
+  COSMOS_ROLE_ASSIGNMENT_ID=$(python -c "import uuid; print(uuid.uuid5(uuid.NAMESPACE_URL, 'ai200-cosmos:$COSMOS:$UAMI_PRINCIPAL_ID:reader'))")
+  az cosmosdb sql role assignment create \
+    -g "$COSMOS_RG" -a "$COSMOS" \
+    --role-assignment-id "$COSMOS_ROLE_ASSIGNMENT_ID" \
+    --role-definition-name "Cosmos DB Built-in Data Reader" \
+    --scope "/" \
+    --principal-id "$UAMI_PRINCIPAL_ID"
 
-# Local development fallback: same code, developer token from Azure CLI.
-az login
-az account show -o table""",
+  # Local DefaultAzureCredential uses the signed-in developer, not the UAMI.
+  LOCAL_USER_ID=$(az ad signed-in-user show --query id -o tsv)
+  COSMOS_LOCAL_ROLE_ASSIGNMENT_ID=$(python -c "import uuid; print(uuid.uuid5(uuid.NAMESPACE_URL, 'ai200-cosmos:$COSMOS:$LOCAL_USER_ID:reader'))")
+  az cosmosdb sql role assignment create \
+    -g "$COSMOS_RG" -a "$COSMOS" \
+    --role-assignment-id "$COSMOS_LOCAL_ROLE_ASSIGNMENT_ID" \
+    --role-definition-name "Cosmos DB Built-in Data Reader" \
+    --scope "/" \
+    --principal-id "$LOCAL_USER_ID"
+
+  echo "Save for cleanup:"
+  echo "COSMOS_ROLE_ASSIGNMENT_ID=$COSMOS_ROLE_ASSIGNMENT_ID"
+  echo "COSMOS_LOCAL_ROLE_ASSIGNMENT_ID=$COSMOS_LOCAL_ROLE_ASSIGNMENT_ID"
+fi
+sleep 60""",
 "code": r"""# pip install azure-identity azure-keyvault-secrets azure-cosmos
 # One credential object, no service keys. In Azure this uses managed identity;
 # locally it falls through to Azure CLI / developer credentials after az login.
@@ -426,17 +450,16 @@ vault = SecretClient(
 secret = vault.get_secret("openai-api-key")
 print("Loaded secret version", secret.properties.version)
 
-cosmos = CosmosClient(
-    os.environ["COSMOS_ENDPOINT"],
-    credential=credential,
-)
-
-container = cosmos.get_database_client("appdb").get_container_client("requests")
-for item in container.query_items(
-    query="SELECT TOP 5 c.id, c.status FROM c",
-    enable_cross_partition_query=True,
-):
-    print(item)
+# Optional: if Lab 2.1's endpoint is configured, read its existing container.
+cosmos_endpoint = os.getenv("COSMOS_ENDPOINT")
+if cosmos_endpoint:
+    cosmos = CosmosClient(cosmos_endpoint, credential=credential)
+    container = cosmos.get_database_client("appdb").get_container_client("documents")
+    for item in container.query_items(
+        query="SELECT TOP 5 c.id, c.title FROM c",
+        enable_cross_partition_query=True,
+    ):
+        print(item)
 
 
 # If you want to fail fast unless the code is running in Azure, use this
@@ -449,10 +472,38 @@ azure_only_credential = ManagedIdentityCredential(
  "A managed identity existing on the app is not enough. Missing <b>data-plane</b> roles cause 403 errors even though token acquisition succeeds.",
  "<b>Reader</b> on the resource group is management-plane read access, not permission to read Key Vault secret values or Cosmos DB items.",
  "With multiple user-assigned identities attached, <code>DefaultAzureCredential</code> needs the client ID. Object ID and client ID are different values.",
- "Local <code>az login</code> proves the credential chain works locally, but it does not grant your deployed app anything. The app's principal needs its own role assignments.",
+ "Local <code>az login</code> selects the developer identity but does not authorize it; that developer needs its own data-plane roles. It also grants the deployed app nothing, so the app principal needs separate assignments.",
  "Connection strings are the wrong answer when the requirement says no credential rotation burden or no secrets in code.",
 ],
-"cleanup": r"""az identity delete -g rg-ai200-secure -n id-ai200-reader""",
+"cleanup": r"""# Run only after Labs 4.1-4.3 are complete.
+# If AZURE_CLIENT_ID existed before this lab, restore its previous value instead.
+az webapp config appsettings delete \
+  -g "$APP_RG" -n "$APP" --setting-names AZURE_CLIENT_ID
+
+if [[ -n "${COSMOS_ROLE_ASSIGNMENT_ID:-}" ]]; then
+  az cosmosdb sql role assignment delete \
+    -g "$COSMOS_RG" -a "$COSMOS" \
+    --role-assignment-id "$COSMOS_ROLE_ASSIGNMENT_ID" --yes
+fi
+
+if [[ -n "${COSMOS_LOCAL_ROLE_ASSIGNMENT_ID:-}" ]]; then
+  az cosmosdb sql role assignment delete \
+    -g "$COSMOS_RG" -a "$COSMOS" \
+    --role-assignment-id "$COSMOS_LOCAL_ROLE_ASSIGNMENT_ID" --yes
+fi
+
+az webapp identity remove \
+  -g "$APP_RG" -n "$APP" --identities "$UAMI_ID"
+
+# Disable the system identity only if this lab originally enabled it:
+# az webapp identity remove -g "$APP_RG" -n "$APP" --identities '[system]'
+
+# Confirm this group contains only lab-created resources before deleting it.
+az resource list -g "$LAB_RG" -o table
+az group delete -n "$LAB_RG" --yes --no-wait
+
+# The purge-protected vault remains soft-deleted for its 90-day retention and
+# cannot be purged early. App Configuration is also soft-deleted.""",
 },
 # ---------------------------------------------------------------- 4.4
 {
@@ -460,13 +511,13 @@ azure_only_credential = ManagedIdentityCredential(
 "title": "Distributed tracing with OpenTelemetry and Azure Monitor",
 "time": "35 min",
 "level": "Advanced",
-"objective": "Instrument a Python service with OpenTelemetry, export spans to Application Insights, and correlate requests, dependencies and traces.",
+"objective": "Instrument a Python service with OpenTelemetry, export spans as request/dependency telemetry and Python logs as trace telemetry, and correlate them in Application Insights.",
 "exam": [
- "OpenTelemetry creates <b>traces</b> made of <b>spans</b>. A span should carry useful attributes such as operation name, model deployment, tenant or order ID \u2014 not secret values.",
+ "An OpenTelemetry distributed trace consists of <b>spans</b>. In Application Insights, spans map primarily to <code>requests</code>/<code>dependencies</code>; Python logging records map to <code>traces</code>/<code>AppTraces</code>.",
  "The Azure Monitor distro is <code>azure-monitor-opentelemetry</code>. Calling <code>configure_azure_monitor()</code> wires exporters and common auto-instrumentation.",
  "Application Insights ingestion uses <code>APPLICATIONINSIGHTS_CONNECTION_STRING</code>, not the old instrumentation key-only pattern.",
  "Trace context propagates through W3C <code>traceparent</code> headers so downstream services and HTTP dependencies share the same operation / trace.",
- "Correlation in Application Insights joins <code>requests</code>, <code>dependencies</code>, <code>traces</code> and <code>exceptions</code> by operation identifiers.",
+ "Application Insights correlates request/dependency spans, application logs and exceptions through operation and parent identifiers.",
 ],
 "prereq": "An Azure Monitor Application Insights resource. For Python: <code>pip install azure-monitor-opentelemetry flask requests</code>.",
 "portal": [
@@ -476,65 +527,77 @@ azure_only_credential = ManagedIdentityCredential(
  "##Instrument and run",
  "Add <code>configure_azure_monitor()</code> at app startup before the framework begins handling requests.",
  "Create custom spans around important AI calls, storage calls or orchestration steps; add attributes that help troubleshooting and filtering.",
- "For HTTP calls to other services, keep the auto-instrumented <code>requests</code> library or manually inject context headers so traces stay connected.",
+ "The bundled Requests instrumentation creates the HTTP client span and injects W3C context automatically. Use manual injection only for an uninstrumented transport\u2014do not do both.",
  "##Inspect correlation",
- "Application Insights \u2192 <b>Transaction search</b> \u2192 open one request \u2192 inspect the end-to-end transaction waterfall.",
+ "Application Insights \u2192 <b>Investigate \u2192 Search</b> \u2192 select a request or dependency \u2192 open its end-to-end transaction details.",
  "Application Insights \u2192 <b>Application map</b> shows caller / dependency relationships. <b>Failures</b> highlights failed requests and dependency failures.",
- "Application Insights \u2192 <b>Logs</b> \u2192 query <code>requests</code>, <code>dependencies</code>, <code>traces</code> and <code>exceptions</code> by <code>operation_Id</code>.",
+ "Application Insights \u2192 <b>Logs</b> \u2192 query request/dependency spans in <code>requests</code>/<code>dependencies</code>, application logs in <code>traces</code>, and errors in <code>exceptions</code> by <code>operation_Id</code>.",
 ],
-"cli": r"""RG=rg-ai200-monitor
+"cli": r"""MONITOR_RG=rg-ai200-monitor
+APP_RG="<resource-group-containing-your-webapp>"
 LOC=eastus
 LAW=law-ai200-$RANDOM
 AI=appi-ai200-$RANDOM
-APP=<your-webapp-name>
+APP="<your-webapp-name>"
 
-az group create -n $RG -l $LOC
+az group create -n "$MONITOR_RG" -l "$LOC"
 
 # Workspace-based Application Insights is the modern Azure Monitor pattern.
-az monitor log-analytics workspace create -g $RG -n $LAW -l $LOC
-LAW_ID=$(az monitor log-analytics workspace show -g $RG -n $LAW \
+az monitor log-analytics workspace create \
+  -g "$MONITOR_RG" -n "$LAW" -l "$LOC"
+LAW_ID=$(az monitor log-analytics workspace show -g "$MONITOR_RG" -n "$LAW" \
   --query id -o tsv)
 
 az extension add -n application-insights --upgrade
 az monitor app-insights component create \
-  --app $AI \
-  --location $LOC \
-  --resource-group $RG \
-  --workspace $LAW_ID \
+  --app "$AI" \
+  --location "$LOC" \
+  --resource-group "$MONITOR_RG" \
+  --workspace "$LAW_ID" \
   --application-type web
 
-CONN=$(az monitor app-insights component show -g $RG --app $AI \
+CONN=$(az monitor app-insights component show -g "$MONITOR_RG" --app "$AI" \
   --query connectionString -o tsv)
 
-# App code reads this variable when configure_azure_monitor() starts.
-az webapp config appsettings set -g $RG -n $APP \
+# App Service deployment:
+az webapp config appsettings set -g "$APP_RG" -n "$APP" \
   --settings APPLICATIONINSIGHTS_CONNECTION_STRING="$CONN"
 
-# Quick smoke query after traffic flows.
-APP_ID=$(az monitor app-insights component show -g $RG --app $AI \
+# Local alternative:
+export APPLICATIONINSIGHTS_CONNECTION_STRING="$CONN"
+
+APP_ID=$(az monitor app-insights component show -g "$MONITOR_RG" --app "$AI" \
   --query appId -o tsv)
 
-az monitor app-insights query --app $APP_ID \
-  --analytics-query 'requests | where timestamp > ago(30m) | summarize count() by bin(timestamp, 5m)'""",
+az monitor app-insights query --app "$APP_ID" \
+  --analytics-query 'requests | where timestamp > ago(30m) | summarize requests=sum(itemCount) by bin(timestamp, 5m)'""",
 "code": r"""# pip install azure-monitor-opentelemetry flask requests
-# Set APPLICATIONINSIGHTS_CONNECTION_STRING before the process starts.
+# Set APPLICATIONINSIGHTS_CONNECTION_STRING before starting the process.
 
+import logging
 import os
 
 import requests
 from azure.monitor.opentelemetry import configure_azure_monitor
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify
 from opentelemetry import trace
-from opentelemetry.propagate import inject
+from opentelemetry.trace import Status, StatusCode
 
-# Exam point: one call configures Azure Monitor exporters and common
-# auto-instrumentation for frameworks/libraries that are installed.
-configure_azure_monitor()
+configure_azure_monitor(
+    logger_name=__name__,
+    # Keep correlated logs only when their trace is retained by sampling.
+    enable_trace_based_sampling_for_logs=True,
+)
 
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 tracer = trace.get_tracer(__name__)
 app = Flask(__name__)
 
-INVENTORY_URL = os.environ.get("INVENTORY_URL", "https://inventory.contoso.internal")
+INVENTORY_URL = os.environ.get(
+    "INVENTORY_URL",
+    "https://inventory.contoso.internal",
+)
 
 
 @app.get("/checkout/<order_id>")
@@ -543,27 +606,36 @@ def checkout(order_id):
         span.set_attribute("app.order_id", order_id)
         span.set_attribute("app.route", "/checkout/{order_id}")
 
-        headers = {}
-        inject(headers)  # writes W3C traceparent/tracestate for the next service
-
         with tracer.start_as_current_span("reserve_inventory") as child:
+            child.set_attribute("app.dependency", "inventory")
+            logger.info(
+                "Reserving inventory",
+                extra={"order_id": order_id},
+            )
+
+            # Requests auto-instrumentation creates the HTTP client span and
+            # injects traceparent/tracestate while this child span is current.
             response = requests.post(
                 f"{INVENTORY_URL}/reserve",
                 json={"orderId": order_id},
-                headers=headers,
                 timeout=5,
             )
-            child.set_attribute("http.status_code", response.status_code)
-            child.set_attribute("dependency.name", "inventory")
             response.raise_for_status()
+
+            logger.info(
+                "Inventory reserved",
+                extra={
+                    "order_id": order_id,
+                    "status_code": response.status_code,
+                },
+            )
 
         return jsonify(ok=True, orderId=order_id)
 
 
 @app.get("/healthz")
 def healthz():
-    current = trace.get_current_span()
-    current.set_attribute("health.probe", True)
+    trace.get_current_span().set_attribute("health.probe", True)
     return "ok"
 
 
@@ -571,17 +643,22 @@ def healthz():
 def record_exception(exc):
     span = trace.get_current_span()
     span.record_exception(exc)
-    span.set_status(trace.Status(trace.StatusCode.ERROR, str(exc)))
-    return jsonify(error=type(exc).__name__), 500""",
+    span.set_status(Status(StatusCode.ERROR, str(exc)))
+    logger.error(
+        "Checkout failed",
+        exc_info=(type(exc), exc, exc.__traceback__),
+    )
+    return jsonify(error="internal_error"), 500""",
 "code_label": "Python / SDK",
 "traps": [
  "Do not use connection strings, API keys or secrets as span attributes. Telemetry is searchable and retained.",
  "If no telemetry appears, check the exact app setting name: <code>APPLICATIONINSIGHTS_CONNECTION_STRING</code>. The deprecated instrumentation-key-only approach is a distractor.",
  "A trace broken between services usually means the downstream call did not receive / forward <code>traceparent</code> headers or uses a non-instrumented transport.",
- "Logs alone are not distributed tracing. The exam expects spans, parent/child relationships, dependency telemetry and correlation IDs.",
+ "<code>traces</code>/<code>AppTraces</code> rows are application log records, not OpenTelemetry spans. Distributed-trace spans appear primarily as request and dependency telemetry.",
  "High-cardinality attributes such as full prompts or raw user text can explode cost and leak data; use stable identifiers and sanitized dimensions.",
 ],
-"cleanup": r"""az group delete -n rg-ai200-monitor --yes --no-wait""",
+"cleanup": r"""# Deferred: Lab 4.5 needs this Application Insights resource and workspace.
+# Run the consolidated monitoring cleanup after Lab 4.5.""",
 },
 # ---------------------------------------------------------------- 4.5
 {
@@ -589,82 +666,79 @@ def record_exception(exc):
 "title": "Analyze logs and metrics with KQL in Log Analytics / Application Insights",
 "time": "30 min",
 "level": "Core",
-"objective": "Use KQL to find failed requests, calculate p95 latency, correlate traces, and run the same queries from Azure CLI.",
+"objective": "Use KQL to find failures, calculate sampling-aware request volume and p95 latency, correlate telemetry, and translate between Application Insights and workspace schemas.",
 "exam": [
  "KQL flows left to right through pipes: source table \u2192 <code>where</code> filters \u2192 <code>summarize</code> aggregations \u2192 <code>project</code> shape \u2192 <code>order by</code> / <code>render</code>.",
  "Use <code>bin(timestamp, 1h)</code> before <code>summarize</code> to group time-series data into chartable buckets.",
- "Application Insights tables commonly tested: <code>requests</code>, <code>dependencies</code>, <code>traces</code> and <code>exceptions</code>.",
+ "Application Insights <b>resource-scoped</b> Logs uses lowercase tables such as <code>requests</code>, <code>dependencies</code>, <code>traces</code> and <code>exceptions</code>. The connected workspace uses PascalCase <code>AppRequests</code>, <code>AppDependencies</code>, <code>AppTraces</code> and <code>AppExceptions</code>.",
  "Latency questions often use <code>percentile(duration, 95)</code> for p95, not average duration.",
+ "Application Insights metrics are not sampled, but trace telemetry can be. Use <code>sum(itemCount)</code> and <code>sumif(itemCount, condition)</code> for sampling-aware request, dependency and failure volume.",
  "Correlation uses <code>operation_Id</code> across telemetry tables; parent/child relationships use <code>operation_ParentId</code> and request/dependency <code>id</code> values.",
 ],
 "prereq": "An Application Insights resource with traffic from Lab 4.4 or any app that emits request, dependency, trace and exception telemetry.",
 "portal": [
  "##Open Logs",
- "Application Insights \u2192 <b>Monitoring \u2192 Logs</b>. Close sample-query popups so you can paste the KQL tab queries.",
+ "Application Insights \u2192 <b>Monitoring \u2192 Logs</b>. Close sample-query popups and use the lowercase app-scoped query variants below.",
  "Set the time range to <b>Last 24 hours</b>. Run a simple <code>requests | take 10</code> first to confirm data exists.",
  "##Find failures",
  "Run the failed-requests query. Use the <b>Chart</b> view when the query includes <code>render timechart</code>.",
- "Open one failed request in <b>Transaction search</b> and copy its <code>operation_Id</code> for correlation.",
+ "Open one failed request from <b>Investigate \u2192 Search</b> and copy its <code>operation_Id</code> for correlation.",
  "##Measure latency",
  "Run the p95 query grouped by <code>bin(timestamp, 5m)</code> and request <code>name</code>. Compare p95 to average to spot tail latency.",
  "##Correlate telemetry",
  "Run the join / union queries to bring requests, dependencies, traces and exceptions into one timeline for a single operation.",
- "Switch to the Log Analytics workspace if your resource is workspace-based; the same KQL works there when the App Insights tables are present.",
+ "For workspace scope, open the linked workspace \u2192 <b>Logs</b> and translate to the PascalCase <code>App*</code> schema; lowercase resource-scoped queries do not run there unchanged.",
 ],
 "cli": r"""RG=rg-ai200-monitor
-AI=<application-insights-name>
-LAW=<log-analytics-workspace-name>
+AI="<application-insights-name>"
+LAW="<log-analytics-workspace-name>"
 
-APP_ID=$(az monitor app-insights component show -g $RG --app $AI \
+APP_ID=$(az monitor app-insights component show -g "$RG" --app "$AI" \
   --query appId -o tsv)
 
 # --- Application Insights query by appId ----------------------------
-az monitor app-insights query --app $APP_ID \
+az monitor app-insights query --app "$APP_ID" \
   --offset 1d \
-  --analytics-query "requests | where success == false | summarize failures=count() by bin(timestamp, 1h), name, resultCode | order by timestamp desc"
+  --analytics-query "requests | summarize failures=sumif(itemCount, success == false) by bin(timestamp, 1h), name, resultCode | order by timestamp desc"
 
 # p95 latency: percentile beats average for tail-latency questions.
-az monitor app-insights query --app $APP_ID \
+az monitor app-insights query --app "$APP_ID" \
   --offset 1d \
-  --analytics-query "requests | summarize p95_ms=percentile(duration, 95), avg_ms=avg(duration), count() by bin(timestamp, 5m), name | order by timestamp asc"
+  --analytics-query "requests | summarize requests=sum(itemCount), p95_ms=percentile(duration, 95) / 1ms by bin(timestamp, 5m), name | order by timestamp asc"
 
 # --- Workspace query by Log Analytics customerId --------------------
-WORKSPACE_ID=$(az monitor log-analytics workspace show -g $RG -n $LAW \
+WORKSPACE_ID=$(az monitor log-analytics workspace show -g "$RG" -n "$LAW" \
   --query customerId -o tsv)
 
-az monitor log-analytics query -w $WORKSPACE_ID \
-  --analytics-query "traces | where timestamp > ago(1h) | summarize count() by severityLevel" \
+az monitor log-analytics query -w "$WORKSPACE_ID" \
+  --analytics-query "AppTraces | where TimeGenerated > ago(1h) | summarize logs=sum(ItemCount) by SeverityLevel" \
   --timespan P1D""",
-"code": r"""// 1) Failed requests per hour, by operation and result code.
-requests
-| where timestamp > ago(24h)
-| where success == false
-| summarize failures = count() by bin(timestamp, 1h), name, resultCode
-| order by timestamp desc
-| render timechart
-
-// 2) p95 latency by request name. p95 is the common exam metric for tail latency.
+"code": r"""// APPLICATION INSIGHTS RESOURCE-SCOPED LOGS
+// 1) Sampling-aware request and failure volume with p95 latency.
 requests
 | where timestamp > ago(24h)
 | summarize
-    requests = count(),
-    avg_ms = avg(duration),
-    p95_ms = percentile(duration, 95)
-  by bin(timestamp, 5m), name
+    requests = sum(itemCount),
+    failures = sumif(itemCount, success == false),
+    p95_ms = percentile(duration, 95) / 1ms
+  by bin(timestamp, 15m), name
+| extend failure_rate_pct =
+    iff(requests == 0, 0.0, round(100.0 * failures / requests, 2))
 | order by timestamp asc
 | render timechart
 
-// 3) Slow or failing dependencies, grouped by target service.
+// 2) Slow or failing dependencies, grouped by target service.
 dependencies
 | where timestamp > ago(24h)
+| where success == false or duration > 1s
 | summarize
-    calls = count(),
-    failures = countif(success == false),
-    p95_ms = percentile(duration, 95)
+    calls = sum(itemCount),
+    failures = sumif(itemCount, success == false),
+    p95_ms = percentile(duration, 95) / 1ms
   by target, name, type
 | order by failures desc, p95_ms desc
 
-// 4) Join failed requests to trace messages on operation_Id.
+// 3) Join failed requests to application log records on operation_Id.
 requests
 | where timestamp > ago(24h)
 | where success == false
@@ -677,20 +751,41 @@ requests
 ) on operation_Id
 | order by request_time desc, trace_time asc
 
-// 5) One correlated timeline across requests, dependencies, traces and exceptions.
+// 4) One correlated timeline. AppTraces/traces are log records, not spans.
 let operation = "<paste-operation_Id-here>";
 union withsource=table requests, dependencies, traces, exceptions
 | where operation_Id == operation
 | project timestamp, table, operation_Id, operation_ParentId, id,
           name, message, type, resultCode, success, duration
-| order by timestamp asc""",
+| order by timestamp asc
+
+// WORKSPACE-SCOPED EQUIVALENT FOR QUERY 1
+AppRequests
+| where TimeGenerated > ago(24h)
+| summarize
+    Requests = sum(ItemCount),
+    Failures = sumif(ItemCount, Success == false),
+    P95DurationMs = percentile(DurationMs, 95)
+  by bin(TimeGenerated, 15m), Name
+| extend FailureRatePct =
+    iff(Requests == 0, 0.0, round(100.0 * Failures / Requests, 2))
+| order by TimeGenerated asc
+| render timechart""",
 "code_label": "KQL",
 "traps": [
  "<code>where</code> filters rows; <code>project</code> selects / renames columns; <code>summarize</code> collapses rows. Mixing those up is a common KQL distractor.",
  "Without <code>bin(timestamp, ...)</code>, a time-series <code>summarize</code> can group by every unique timestamp and produce useless charts.",
  "Average latency can hide user pain. If the question asks for slowest 5% or tail latency, use <code>percentile(duration, 95)</code>.",
+ "Choose the schema that matches query scope: lowercase tables and columns for Application Insights resource-scoped Logs; <code>App*</code> tables and PascalCase columns for workspace-scoped Logs.",
+ "<code>count()</code> and <code>countif()</code> count stored rows. With trace sampling, use <code>sum(itemCount)</code> and <code>sumif(itemCount, condition)</code> for represented event volume.",
  "<code>operation_Id</code> correlates the end-to-end transaction; <code>id</code> identifies one request/dependency span. Do not join only on timestamp.",
  "Application Insights and Log Analytics use KQL, but CLI targets differ: <code>az monitor app-insights query --app</code> uses an App Insights appId; <code>az monitor log-analytics query -w</code> uses a workspace ID.",
 ],
+"cleanup": r"""# Remove any alert created from the query if it exists.
+az monitor metrics alert delete \
+  -g rg-ai200-monitor -n ai200-high-failure-rate 2>/dev/null || true
+
+# Lab 4.5 is the final consumer of the monitoring resources.
+az group delete -n rg-ai200-monitor --yes --no-wait""",
 },
 ]
