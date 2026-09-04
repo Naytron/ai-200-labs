@@ -271,7 +271,7 @@ for number, question in STUDY["questions"]:
     search_text = f"{number} {question} {answer_word} {explanation}".lower()
     quiz_items.append(f'''
 <article class="quiz-item" data-answer="{answer}" data-search="{E(search_text)}">
-  <h4><span>{number}</span>{inline_md(question)}</h4>
+  <h4><span class="quiz-number">{number}</span><span class="quiz-question">{inline_md(question)}</span></h4>
   <div class="quiz-choices" role="group" aria-label="Question {number}: choose true or false">
     <button class="quiz-choice" data-choice="T" type="button">True</button>
     <button class="quiz-choice" data-choice="F" type="button">False</button>
@@ -487,7 +487,7 @@ details.cleanup .codewrap{margin:0 12px 12px}
 #study-q{flex:1 1 360px;min-width:240px;background:var(--cp-surface);border:1px solid var(--cp-border);color:var(--cp-text);border-radius:.625rem;padding:10px 14px;font-family:inherit;font-size:14.5px;outline:none}
 #study-q:focus{border-color:var(--cp-accent)}
 .study-notes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-items:start}
-.study-topic{background:var(--cp-surface);border:1px solid var(--cp-border);border-radius:16px;padding:20px;scroll-margin-top:16px;box-shadow:0 0 2px rgba(0,0,0,.12),0 1px 2px rgba(0,0,0,.14)}
+.study-topic{min-width:0;background:var(--cp-surface);border:1px solid var(--cp-border);border-radius:16px;padding:20px;scroll-margin-top:16px;box-shadow:0 0 2px rgba(0,0,0,.12),0 1px 2px rgba(0,0,0,.14)}
 .study-topic h3{margin:0 0 12px;font-size:19px;line-height:1.3;color:var(--cp-accent)}
 .study-topic h4,.study-topic h5{margin:18px 0 8px}
 .study-topic p{margin:8px 0;color:var(--cp-text-muted)}
@@ -502,9 +502,10 @@ details.cleanup .codewrap{margin:0 12px 12px}
 .study-quiz .dom-num{flex-basis:48px;border-radius:.625rem}
 .quiz-progress{margin:-2px 0 14px;color:var(--cp-text-muted);font-size:13px}
 .quiz-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
-.quiz-item{background:var(--cp-surface);border:1px solid var(--cp-border);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:12px;box-shadow:0 0 2px rgba(0,0,0,.12),0 1px 2px rgba(0,0,0,.14)}
+.quiz-item{min-width:0;background:var(--cp-surface);border:1px solid var(--cp-border);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:12px;box-shadow:0 0 2px rgba(0,0,0,.12),0 1px 2px rgba(0,0,0,.14)}
 .quiz-item h4{display:flex;gap:10px;align-items:flex-start;margin:0;font-size:14px;line-height:1.5;font-weight:600}
-.quiz-item h4 span{flex:0 0 28px;height:28px;border-radius:50%;background:var(--cp-accent-soft);color:var(--cp-accent);display:grid;place-items:center;font-size:12px}
+.quiz-item h4 .quiz-number{flex:0 0 28px;height:28px;border-radius:50%;background:var(--cp-accent-soft);color:var(--cp-accent);display:grid;place-items:center;font-size:12px}
+.quiz-question{min-width:0}
 .quiz-choices{display:flex;gap:8px}
 .quiz-choice{flex:1;background:var(--cp-surface-soft);border:1px solid var(--cp-border);border-radius:.625rem;color:var(--cp-text);padding:8px 12px;font-family:inherit;cursor:pointer}
 .quiz-choice:hover{border-color:var(--cp-accent)}
@@ -662,8 +663,12 @@ HTML = f"""<!DOCTYPE html>
 <script>
   (() => {{
     const param = new URLSearchParams(window.location.search).get("scoutTheme");
-    const theme =
-      param || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+    let saved = null;
+    try {{ saved = localStorage.getItem("ai200Theme"); }} catch (error) {{}}
+    const requested = param || saved;
+    const theme = requested === "dark" || requested === "light"
+      ? requested
+      : (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
     document.documentElement.setAttribute("data-theme", theme);
   }})();
 </script>

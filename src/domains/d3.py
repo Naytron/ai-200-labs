@@ -113,16 +113,24 @@ def force_max_delivery_to_dlq(client: ServiceBusClient) -> None:
     with client.get_queue_sender(queue_name=QUEUE) as sender:
         sender.send_messages(ServiceBusMessage("always failing", message_id="auto-dlq-1"))
 
-    # Abandon the same logical message repeatedly. When delivery_count exceeds
-    # MaxDeliveryCount, Service Bus moves it to the DLQ automatically.
+    # Abandon the target message repeatedly. Settle any prior lab message so queue
+    # ordering cannot make this demonstration abandon the wrong message.
     for _ in range(5):
         with client.get_queue_receiver(queue_name=QUEUE, max_wait_time=3) as receiver:
-            messages = receiver.receive_messages(max_message_count=1, max_wait_time=3)
+            messages = receiver.receive_messages(max_message_count=10, max_wait_time=3)
             if not messages:
                 break
-            msg = messages[0]
-            print(f"abandoning {msg.message_id}, delivery={msg.delivery_count}")
-            receiver.abandon_message(msg)
+            target_found = False
+            for msg in messages:
+                if msg.message_id == "auto-dlq-1":
+                    target_found = True
+                    print(f"abandoning {msg.message_id}, delivery={msg.delivery_count}")
+                    receiver.abandon_message(msg)
+                else:
+                    print(f"completing prior lab message {msg.message_id}")
+                    receiver.complete_message(msg)
+            if not target_found:
+                break
 
 
 def read_dead_letters(client: ServiceBusClient) -> None:
@@ -435,8 +443,9 @@ print(f"published {len(events)} events at {datetime.now(timezone.utc).isoformat(
 
 
 # Handler reminder (webhook or Azure Function):
-# - Reply to Microsoft.EventGrid.SubscriptionValidationEvent with validationResponse.
-# - Return 2xx only after durable/idempotent processing.
+# - For Microsoft.EventGrid.SubscriptionValidationEvent, return HTTP 200 with
+#   {"validationResponse": "<validationCode>"}; HTTP 202 fails validation.
+# - For normal events, return 2xx only after durable/idempotent processing.
 # - Treat duplicate event IDs as normal; retries are expected.""",
 "code_label": "Python / SDK",
 "traps": [
@@ -448,7 +457,7 @@ print(f"published {len(events)} events at {datetime.now(timezone.utc).isoformat(
 ],
 "cleanup": r"""az eventgrid event-subscription delete --name orders-webhook \
   --source-resource-id $(az eventgrid topic show -g rg-ai200-connect -n <topic-name> --query id -o tsv)
-az eventgrid topic delete -g rg-ai200-connect -n <topic-name> --yes
+az eventgrid topic delete -g rg-ai200-connect -n <topic-name>
 az storage account delete -g rg-ai200-connect -n <storage-account> --yes
 az group delete -n rg-ai200-connect --yes --no-wait""",
 },
@@ -570,24 +579,24 @@ az storage account delete -g rg-ai200-connect -n <storage-account> --yes""",
 "title": "Configure and deploy an Azure Functions app",
 "time": "35 min",
 "level": "Core",
-"objective": "Create a Linux Consumption Function App, configure app settings and managed identity access, then deploy a Python project with Core Tools.",
+"objective": "Create a Flex Consumption Function App, configure app settings and managed identity access, then deploy a Python project with Core Tools.",
 "exam": [
  "A Function App is the deployment and configuration boundary. All functions in the app share app settings, managed identity, networking, Application Insights and hosting plan.",
- "For serverless hosting choose <b>Flex Consumption</b> or <b>Consumption</b> when you want scale-out without managing servers. Premium/Dedicated are distractors when the scenario does not need VNET-heavy warm instances or fixed capacity.",
- "Deploy Python Functions with Core Tools from the project root using <code>func azure functionapp publish &lt;app&gt; --python</code>. The app's runtime stack must match the local Python version supported by Azure Functions.",
- "Use <b>app settings</b> for configuration and connection names referenced by decorators. For identity-based connections, settings use a prefix such as <code>ServiceBusConnection__fullyQualifiedNamespace</code> instead of a secret connection string.",
+ "For a new serverless Python app, choose <b>Flex Consumption</b>. Classic Linux Consumption is a legacy hosting path; Premium/Dedicated fit scenarios that need prewarmed instances or fixed capacity.",
+ "Deploy Python Functions with Core Tools from the project root using <code>func azure functionapp publish &lt;app&gt;</code>. Core Tools detects the project language, and the app's runtime stack must match a Python version supported by Azure Functions.",
+ "Use <b>app settings</b> for configuration and connection names referenced by decorators. For a system-assigned identity-based Service Bus connection, set both <code>ServiceBusConnection__fullyQualifiedNamespace</code> and <code>ServiceBusConnection__credential=managedidentity</code> instead of a secret connection string.",
  "Turn on a <b>system-assigned managed identity</b> and grant least-privilege roles such as <b>Azure Service Bus Data Receiver</b>/<b>Data Sender</b>. Do not store root SAS keys when managed identity is available.",
 ],
 "prereq": "Completed Lab 3.4 project, Azure CLI 2.x, Azure Functions Core Tools v4, and an existing Service Bus namespace if you want to test identity-based Service Bus bindings.",
 "portal": [
  "##Create the Function App",
- "Portal → <b>Function App</b> → <b>+ Create</b>. Hosting plan <b>Consumption</b> (or <b>Flex Consumption</b> where available), OS <b>Linux</b>, runtime <b>Python</b>, Functions version <b>4</b>.",
+ "Portal → <b>Function App</b> → <b>+ Create</b>. Select <b>Flex Consumption</b>, runtime <b>Python</b>, and Functions version <b>4</b>. Linux is the supported OS for Python.",
  "Create or select a Storage account for the Functions host. Enable <b>Application Insights</b> for logs, failures and invocation traces.",
  "##Configure settings",
- "Function App → <b>Settings → Environment variables</b> → add app settings used by your code, for example <code>AI_ENDPOINT</code>, <code>MODEL_DEPLOYMENT</code> and <code>ServiceBusConnection__fullyQualifiedNamespace</code>.",
+ "Function App → <b>Settings → Environment variables</b> → add app settings used by your code, for example <code>AI_ENDPOINT</code>, <code>MODEL_DEPLOYMENT</code>, <code>ServiceBusConnection__fullyQualifiedNamespace</code>, and <code>ServiceBusConnection__credential=managedidentity</code>.",
  "Function App → <b>Identity</b> → turn <b>System assigned</b> on. Grant roles on downstream services: Service Bus Data Receiver for triggers, Data Sender for output messages, Key Vault Secrets User for secrets.",
  "##Deploy",
- "From the local Functions project root, run <code>func azure functionapp publish &lt;app-name&gt; --python</code>. Core Tools packages and deploys the project.",
+ "From the local Functions project root, run <code>func azure functionapp publish &lt;app-name&gt;</code>. Core Tools detects Python, then packages and deploys the project.",
  "Function App → <b>Functions</b> confirms discovered functions. Use <b>Log stream</b>, <b>Application Insights</b> and <b>Diagnose and solve problems</b> for startup or binding errors.",
  "##Verify",
  "Call the HTTP endpoint with the function key, then check logs. If a trigger does not start, verify the extension bundle, connection setting name, role assignment and queue/topic names.",
@@ -603,21 +612,21 @@ az group create -n $RG -l $LOC
 # Host storage is required by the Functions runtime even when your app uses other services.
 az storage account create -g $RG -n $SA -l $LOC --sku Standard_LRS --kind StorageV2
 
-# Linux Consumption plan. Use --flexconsumption-location instead when choosing Flex Consumption.
+# Flex Consumption is the current serverless hosting choice for a new Python app.
 az functionapp create -g $RG -n $APP \
   --storage-account $SA \
-  --consumption-plan-location $LOC \
+  --flexconsumption-location $LOC \
   --runtime python \
   --runtime-version 3.11 \
-  --functions-version 4 \
-  --os-type Linux
+  --functions-version 4
 
 # App settings are what decorator 'connection=' names resolve to at runtime.
 az functionapp config appsettings set -g $RG -n $APP --settings \
   FUNCTIONS_WORKER_RUNTIME=python \
   AI_ENDPOINT=https://<azure-ai-endpoint> \
   MODEL_DEPLOYMENT=gpt-4o \
-  ServiceBusConnection__fullyQualifiedNamespace=$SBNS.servicebus.windows.net
+  ServiceBusConnection__fullyQualifiedNamespace=$SBNS.servicebus.windows.net \
+  ServiceBusConnection__credential=managedidentity
 
 # Managed identity + least-privilege data-plane roles for Service Bus bindings.
 az functionapp identity assign -g $RG -n $APP
@@ -627,10 +636,10 @@ az role assignment create --assignee $PRINCIPAL --role "Azure Service Bus Data R
 az role assignment create --assignee $PRINCIPAL --role "Azure Service Bus Data Sender" --scope $SB_ID
 
 # Deploy from the Python Functions project root created in Lab 3.4.
-func azure functionapp publish $APP --python
+func azure functionapp publish $APP
 
-# Observe startup and invocation logs.
-az functionapp log tail -g $RG -n $APP""",
+# Open Application Insights Live Stream for a Linux Flex Consumption app.
+func azure functionapp logstream $APP --browser""",
 "code": r"""#!/usr/bin/env bash
 # deploy.sh - run from the folder that contains function_app.py, host.json and requirements.txt.
 # This is the repeatable deployment checklist the exam maps to "configure and deploy".
@@ -647,20 +656,20 @@ python -m pip install -r requirements.txt
 # func start --verbose
 
 # Publish the Python app. Core Tools zips the project and triggers the Azure build/deploy flow.
-func azure functionapp publish "$APP_NAME" --python
+func azure functionapp publish "$APP_NAME"
 
 # Post-deploy checks: app settings, discovered functions and live logs.
 az functionapp config appsettings list -g "$RESOURCE_GROUP" -n "$APP_NAME" \
   --query "[].{name:name,value:value}" -o table
 
 az functionapp function list -g "$RESOURCE_GROUP" -n "$APP_NAME" -o table
-az functionapp log tail -g "$RESOURCE_GROUP" -n "$APP_NAME" """,
+func azure functionapp logstream "$APP_NAME" --browser""",
 "code_label": "Bash",
 "traps": [
  "Publishing from the wrong folder deploys an empty app. The project root must contain <code>function_app.py</code>, <code>host.json</code> and <code>requirements.txt</code>.",
  "A missing app setting with the exact binding <code>connection</code> name causes startup/binding errors. <code>ServiceBusConnection</code> and <code>ServiceBusConn</code> are different names.",
  "Managed identity role assignments can take a few minutes to propagate. A newly deployed trigger may fail with authorization errors before the role is effective.",
- "Consumption hosting can cold start. If the scenario requires pre-warmed instances, VNET integration at scale, or longer execution limits, evaluate Premium/Flex rather than classic Consumption.",
+ "Flex Consumption can cold start. If the scenario requires always-ready capacity beyond the configured Flex baseline or fixed dedicated resources, evaluate Premium or Dedicated hosting.",
  "Do not confuse <code>az functionapp deployment source config-zip</code> with Core Tools publish. Config-zip uploads bits; Core Tools understands Functions project conventions and Python builds.",
 ],
 "cleanup": r"""az functionapp delete -g rg-ai200-connect -n <function-app-name>

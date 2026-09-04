@@ -1,6 +1,6 @@
 # AI-200 identity, governance, and monitoring study aid
 
-> **Current-scope anchor:** The 2026 [AI-200 study guide](https://learn.microsoft.com/en-us/credentials/certifications/resources/study-guides/ai-200) places these skills in **Secure, monitor, and troubleshoot Azure solutions (20-25%)**. The guide below is an original study aid, not exam content.
+> **Current-scope anchor:** The 2026 [AI-200 study guide](https://learn.microsoft.com/en-us/credentials/certifications/resources/study-guides/ai-200) explicitly lists Key Vault rotation/retrieval, App Configuration storage/retrieval, distributed tracing with OpenTelemetry SDKs, and KQL analysis of logs/metrics under **Secure, monitor, and troubleshoot Azure solutions (20-25%)**. Identity, RBAC, Policy, locks, tags, and PIM are supplemental related context that supports secure implementation but is not named as a separate objective. This is an original study aid, not exam content.
 
 ## Exam scope and decision model
 
@@ -46,7 +46,7 @@ Use groups and PIM for human elevation, narrowly scoped roles for workloads, and
 
 ## Policy, initiatives, locks, tags, and PIM
 
-Azure Policy evaluates resource state and requests. `Deny` blocks a noncompliant request, `Audit` records noncompliance, `Modify` changes supported properties, and `DeployIfNotExists` can deploy a related resource or configuration when remediation permissions and a remediation task are available. An initiative groups policy definitions and parameters for consistent assignment. An exemption should document owner, reason, compensating control, and expiration.
+Azure Policy evaluates resource state and requests. `Deny` blocks a noncompliant request, `Audit` records noncompliance, `Modify` changes supported properties, and `DeployIfNotExists` can deploy a related resource or configuration when the assignment identity has the required permissions. A compliant create/update can trigger deployment after evaluation; existing noncompliant resources require a remediation task. An initiative groups policy definitions and parameters for consistent assignment. An exemption should document owner, reason, compensating control, and expiration.
 
 Management groups organize subscriptions and are useful for applying a common policy baseline. Resource locks are an operational guardrail: `CanNotDelete` blocks deletion while allowing most writes; `ReadOnly` blocks writes and deletion. Locks can inherit, but an overly broad lock can block legitimate deployments. Locks do not replace RBAC and do not make data immutable in every service.
 
@@ -60,7 +60,7 @@ Tags are metadata for ownership, cost, environment, and classification. They are
 | Secret | Versioned opaque value | Password, token, connection string | Retrieval is a data-plane action |
 | Certificate | X.509 certificate plus policy/lifecycle metadata | TLS and certificate management | May have an associated secret and renewal policy |
 
-Use Azure RBAC or the vault's supported access model consistently. A vault Reader can inspect resource metadata but does not necessarily read secret values. Rotation policy can create new key versions; secret and certificate rotation commonly requires automation to update the dependent service and verify that it can use the new version. Versionless references can follow a current version, but clients may cache values and need explicit refresh.
+Use Azure RBAC for new Key Vault deployments; access policies remain supported as a legacy compatibility model. Control-plane authorization uses RBAC, while data-plane authorization uses the vault's configured model. A vault Reader can inspect resource metadata but does not necessarily read secret values. Rotation policy can create new key versions; secret and certificate rotation commonly requires automation to update the dependent service and verify that it can use the new version. Versionless references can follow a current version, but clients may cache values and need explicit refresh.
 
 Soft delete supports recovery during a retention period. Purge protection prevents destructive purge during that period and is important for regulated or recovery-sensitive vaults. Private endpoints keep traffic on private connectivity, but they do not grant identity permission. Private DNS zones, correct links, routes, firewall settings, and authorization must all line up.
 
@@ -86,7 +86,7 @@ Azure Monitor is the umbrella for metrics, logs, Activity Log, alerts, workbooks
 
 | Signal | Shape and question answered | Retention/query behavior | Example |
 | --- | --- | --- | --- |
-| Metrics | Numeric time series with dimensions; "how much/how often?" | Fast thresholding; sampled aggregation matters | CPU percent by instance |
+| Metrics | Numeric time series with dimensions; "how much/how often?" | Fast thresholding; time grain, aggregation, and dimensions matter | CPU percent by instance |
 | Logs | Detailed records; "what happened and with which fields?" | KQL, table retention, richer context | Failed dependency with operation ID |
 | Activity Log | Azure control-plane operations and service health/resource events | Subscription-level history; export for longer retention | Who changed a firewall rule? |
 
@@ -103,7 +103,7 @@ Include severity, evaluation window, frequency, dimensions, suppression/noise co
 
 OpenTelemetry (OTel) standardizes traces, metrics, and logs plus instrumentation/export pipelines. A trace represents a distributed operation; a span is one timed unit such as an HTTP request, database call, queue publish, or model invocation. Parent-child relationships and W3C `traceparent` propagate context across HTTP and messaging. A business correlation ID can help search, but it is not a trace ID.
 
-Signals can be sampled. Head sampling decides early and is cheap; tail sampling can retain completed slow or failed traces but requires buffering and collector capacity. Sampling can hide rare failures, so retain error signals and monitor exporter failure, queue pressure, and dropped telemetry. Avoid secrets and unbounded user input in attributes; high-cardinality dimensions harm cost and query performance.
+Traces can be sampled; Application Insights metrics are not sampled. Supported SDKs can optionally drop logs associated with unsampled traces. Head sampling decides early and is cheap; general OpenTelemetry Collector architectures can implement tail sampling to retain completed slow or failed traces, but this requires buffering and collector capacity. Sampling can hide rare failures, so retain error signals and monitor exporter failure, queue pressure, and dropped telemetry. Avoid secrets and unbounded user input in attributes; high-cardinality dimensions harm cost and query performance.
 
 ## KQL operators and patterns
 
@@ -125,14 +125,15 @@ Filter time early, project only needed columns, choose join kind deliberately, a
 ```kusto
 AppRequests
 | where TimeGenerated > ago(1h) and Success == false
-| summarize Failures=count(), LastSeen=max(TimeGenerated) by Name
+| summarize Failures=sum(ItemCount), LastSeen=max(TimeGenerated) by Name
 | order by Failures desc
 ```
 
 ```kusto
 AppDependencies
 | where TimeGenerated > ago(30m)
-| summarize p95=percentile(DurationMs, 95), errors=countif(Success == false)
+| summarize p95=percentile(DurationMs, 95),
+    Errors=sumif(ItemCount, Success == false)
     by bin(TimeGenerated, 5m), Target
 | order by TimeGenerated asc
 ```
@@ -166,7 +167,7 @@ AppDependencies
 14. A management group can contain subscriptions and provide a policy assignment scope above them.
 15. An initiative is a bundle of policy definitions that can share parameters.
 16. An `Audit` policy effect by itself rejects a noncompliant create request.
-17. `DeployIfNotExists` can require a remediation task and suitable managed identity permissions.
+17. Remediating existing noncompliant resources with `DeployIfNotExists` requires a remediation task and suitable assignment-identity permissions.
 18. A policy exemption should be treated as permanent once a deployment is unblocked.
 19. A `CanNotDelete` lock generally allows ordinary updates while blocking deletion.
 20. A `ReadOnly` lock can interfere with writes required by a remediation deployment.
@@ -269,7 +270,7 @@ AppDependencies
 14. **T** - Management groups sit above subscriptions.
 15. **T** - Initiatives group policies and commonly share parameters.
 16. **F** - Audit records; it does not itself deny the request.
-17. **T** - Remediation needs permissions and often an identity/task.
+17. **T** - Existing resources need a remediation task, and the policy assignment identity needs the required deployment permissions.
 18. **F** - Exemptions should have a reason, owner, controls, and expiry.
 19. **T** - CanNotDelete blocks deletion but generally permits updates.
 20. **T** - ReadOnly blocks writes, including some remediation writes.
@@ -366,7 +367,7 @@ AppDependencies
 - [Resource locks](https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/lock-resources)
 - [Privileged Identity Management](https://learn.microsoft.com/en-us/entra/id-governance/privileged-identity-management/pim-configure)
 - [Key Vault overview](https://learn.microsoft.com/en-us/azure/key-vault/general/overview)
-- [Key rotation policy](https://learn.microsoft.com/en-us/azure/key-vault/keys/rotation-policy)
+- [Configure cryptographic key auto-rotation](https://learn.microsoft.com/en-us/azure/key-vault/keys/how-to-configure-key-rotation)
 - [Soft delete and purge protection](https://learn.microsoft.com/en-us/azure/key-vault/general/soft-delete-overview)
 - [Key Vault Private Link](https://learn.microsoft.com/en-us/azure/key-vault/general/private-link-service)
 - [App Configuration overview](https://learn.microsoft.com/en-us/azure/azure-app-configuration/overview)

@@ -19,7 +19,7 @@ LABS = [
 "exam": [
  "Cosmos DB for NoSQL stores JSON <b>items</b> in <b>containers</b>. The partition key is the scale boundary; pick a high-cardinality field such as <code>/tenantId</code>, not <code>/category</code> with only a few values.",
  "Use the <b>azure-cosmos</b> SDK: <code>CosmosClient</code> \u2192 <code>DatabaseProxy</code> \u2192 <code>ContainerProxy</code>. Point reads use <code>read_item(id, partition_key)</code>; queries use SQL text plus parameters.",
- "A query that includes the partition key and passes <code>partition_key=...</code> is single-partition and cheaper. Omitting the partition key means <b>cross-partition</b> fan-out and requires <code>enable_cross_partition_query=True</code>.",
+ "A query with an equality filter on the partition key is routed to the matching partition; passing <code>partition_key=...</code> explicitly scopes the SDK request. Without a partition-key scope, <code>query_items</code> performs a <b>cross-partition</b> query. <code>enable_cross_partition_query=True</code> is still accepted but is not required by the current Python SDK.",
  "Parameterized queries (<code>@tenantId</code>) are preferred for safety and plan reuse; string concatenation is both insecure and a poor exam answer.",
  "Keys work for labs, but production answers should prefer <b>Microsoft Entra ID + Cosmos DB built-in data roles</b> or managed identity when the question asks for least privilege.",
 ],
@@ -177,9 +177,7 @@ cat > indexing-policy.json <<'JSON'
     { "path": "/metadata/*" }
   ],
   "excludedPaths": [
-    { "path": "/\"_etag\"/?" },
-    { "path": "/content/*" },
-    { "path": "/embedding/*" }
+    { "path": "/*" }
   ]
 }
 JSON
@@ -251,9 +249,7 @@ indexing_policy = {
         {"path": "/metadata/*"},
     ],
     "excludedPaths": [
-        {"path": "/\"_etag\"/?"},
-        {"path": "/content/*"},
-        {"path": "/embedding/*"},
+        {"path": "/*"},
     ],
 }
 # db.replace_container(container, partition_key=PartitionKey(path="/tenantId"), indexing_policy=indexing_policy)
@@ -280,8 +276,9 @@ az cosmosdb sql container throughput update -g rg-ai200-data -a <your-cosmos-acc
 "level": "Advanced",
 "objective": "Create a vector-enabled Cosmos DB container, store embeddings, and retrieve semantically similar items with VectorDistance().",
 "exam": [
- "Cosmos DB for NoSQL vector search needs two container-level settings: a <b>vector embedding policy</b> describing path/dimensions/data type/distance function and a <b>vector index</b> in the indexing policy.",
- "Common vector index types are <code>flat</code>, <code>quantizedFlat</code> and <code>diskANN</code>. <code>flat</code> is exact but expensive at scale; <code>quantizedFlat</code>/<code>diskANN</code> trade small recall loss for lower latency/RU.",
+ "Cosmos DB vector search requires a container <b>vector embedding policy</b> describing the path, dimensions, data type and distance function. A vector index is optional but recommended to reduce latency and RU consumption.",
+ "<code>flat</code> and <code>quantizedFlat</code> perform brute-force search; <code>quantizedFlat</code> searches compressed vectors and can lose a small amount of accuracy. <code>diskANN</code> is an approximate nearest-neighbor index.",
+ "<code>quantizedFlat</code> and <code>diskANN</code> require at least 1,000 vectors; below that threshold Cosmos DB performs a full scan. Use <code>flat</code> for this small four-dimensional demonstration.",
  "Store embeddings as numeric arrays on the configured path, e.g. <code>/embedding</code>. The query vector must have the <b>same dimensions</b> and compatible distance function.",
  "Semantic retrieval uses <code>VectorDistance(c.embedding, @queryVector)</code>, usually with <code>TOP N</code>, metadata filters and <code>ORDER BY</code> distance.",
  "Vector search is still Cosmos DB: partition keys, indexing policy and RU throughput determine latency/cost. Filtering by tenant before ranking avoids noisy cross-tenant retrieval.",
@@ -293,7 +290,7 @@ az cosmosdb sql container throughput update -g rg-ai200-data -a <your-cosmos-acc
  "##Create the vector container",
  "Data Explorer \u2192 <b>New Container</b>: database <code>appdb</code>, container <code>kb_vectors</code>, partition key <code>/tenantId</code>.",
  "Open the container's JSON policy editor (or use CLI) and define a vector embedding policy for <code>/embedding</code>: data type <code>float32</code>, dimensions matching the embedding model, distance <code>cosine</code>.",
- "Add a vector index on <code>/embedding</code>; choose <code>diskANN</code> for larger corpora or <code>quantizedFlat</code> for a simpler approximate index.",
+ "Add a vector index on <code>/embedding</code>. Use <code>flat</code> for the tiny four-dimensional sample; use <code>quantizedFlat</code> for smaller production candidate sets or <code>diskANN</code> for larger sets after loading at least 1,000 vectors.",
  "##Load and query",
  "Insert items containing <code>id</code>, <code>tenantId</code>, <code>content</code>, <code>source</code>, metadata and <code>embedding</code>.",
  "Run a SQL query using <code>ORDER BY VectorDistance(c.embedding, @queryVector)</code> and confirm the top results are semantically related, not just keyword matches.",
@@ -375,7 +372,7 @@ indexing_policy = {
     "automatic": True,
     "includedPaths": [{"path": "/*"}],
     "excludedPaths": [{"path": "/\"_etag\"/?"}],
-    "vectorIndexes": [{"path": "/embedding", "type": "quantizedFlat"}],
+    "vectorIndexes": [{"path": "/embedding", "type": "flat"}],
 }
 
 container = db.create_container_if_not_exists(
@@ -427,7 +424,7 @@ for row in container.query_items(
 "traps": [
  "Vector policy and vector index are container design decisions; do not assume you can turn a normal container into a vector-optimized one after loading production data.",
  "Dimensions must match exactly. A 1536-dimension query vector cannot search a 3072-dimension embedding path.",
- "Do not exclude the vector path without adding a <code>vectorIndexes</code> entry; normal range indexes are not vector indexes.",
+ "A normal range index does not accelerate vector distance. A <code>vectorIndexes</code> entry is optional, but without one the query uses brute-force evaluation and consumes more RU at scale.",
  "Vector search returns nearest vectors, not grounded answers. RAG still needs metadata filtering, prompt grounding and citations from the retrieved documents.",
 ],
 "cleanup": r"""az group delete -n rg-ai200-data --yes --no-wait""",
@@ -454,7 +451,7 @@ for row in container.query_items(
  "For managed serverless processing, create an <b>Azure Function</b> with a <b>Cosmos DB trigger</b> bound to <code>appdb/documents</code> and lease container <code>leases</code>.",
  "For custom worker control, use the Python SDK pull model and persist continuation tokens/feed-range checkpoints yourself.",
  "##Generate changes",
- "Insert a new item and then update the same item in <code>documents</code>. The processor should see both as changes in latest-version mode, with the current item body.",
+ "Insert a new item and then update it. In latest-version mode, the processor may see only the updated body if both operations occur before the next read. To deliberately observe both, wait for the create to be processed and checkpointed before updating; use All Versions and Deletes when every intermediate version is required.",
  "##Operate",
  "Monitor Function logs or worker logs. If processing calls an embedding model, make the handler idempotent because retries can re-deliver a batch after failures.",
 ],
@@ -478,7 +475,7 @@ COSMOS_CONN=$(az cosmosdb keys list -g $RG -n $COSMOS --type connection-strings 
 # Managed Azure Functions option (deploy code from the code tab separately).
 az storage account create -g $RG -n $STG -l $LOC --sku Standard_LRS
 az functionapp create -g $RG -n $FUNC --storage-account $STG \
-  --consumption-plan-location $LOC --runtime python --runtime-version 3.11 \
+  --flexconsumption-location $LOC --runtime python --runtime-version 3.11 \
   --functions-version 4
 az functionapp config appsettings set -g $RG -n $FUNC --settings \
   CosmosConnection="$COSMOS_CONN" CosmosDatabase=$DB CosmosContainer=$SOURCE CosmosLeaseContainer=$LEASES
@@ -549,7 +546,7 @@ az cosmosdb sql container delete -g rg-ai200-data -a <your-cosmos-account> -d ap
 "level": "Core",
 "objective": "Provision Azure Database for PostgreSQL Flexible Server, connect with psycopg, and create relational/JSON/text indexes for low-latency queries.",
 "exam": [
- "AI-200 names <b>Azure Database for PostgreSQL Flexible Server</b>, not Single Server. Flexible Server is the current managed PostgreSQL target for new workloads.",
+ "AI-200 names <b>Azure Database for PostgreSQL</b>. These labs use Flexible Server, the current Azure deployment model for new PostgreSQL workloads.",
  "Use the right data types: <code>uuid</code> for ids, <code>timestamptz</code> for time, <code>jsonb</code> for metadata, <code>text</code> for chunks and generated <code>tsvector</code> for full-text search.",
  "Index to match access patterns: <b>B-tree</b> for equality/range/sort, <b>GIN</b> for <code>jsonb</code> containment and full-text search. Every extra index speeds reads but slows writes and consumes storage.",
  "Measure with <code>EXPLAIN (ANALYZE, BUFFERS)</code>; do not assume an index is used. Stale statistics or a nonselective predicate can still choose a sequential scan.",
@@ -586,6 +583,10 @@ az postgres flexible-server create -g $RG -n $PG -l $LOC \
 
 az postgres flexible-server db create -g $RG -s $PG -d $DB
 
+# Azure PostgreSQL blocks extensions until they are allow-listed.
+az postgres flexible-server parameter set -g $RG -s $PG \
+  -n azure.extensions -v pgcrypto
+
 # Narrow this to your real public IP for labs outside Cloud Shell.
 az postgres flexible-server firewall-rule create -g $RG -n allow-client -s $PG \
   --start-ip-address <your-ip> --end-ip-address <your-ip>
@@ -597,7 +598,75 @@ export PGPASSWORD=$PASSWORD
 export PGSSLMODE=require
 
 psql "host=$PGHOST port=5432 dbname=$PGDATABASE user=$PGUSER password=$PGPASSWORD sslmode=require" \
-  -f schema.sql""",
+  -v ON_ERROR_STOP=1 -f schema.sql
+
+python -m pip install "psycopg[binary]"
+
+python - <<'PY'
+import os
+
+import psycopg
+from psycopg.types.json import Jsonb
+
+with psycopg.connect(
+    host=os.environ["PGHOST"],
+    port=5432,
+    dbname=os.environ["PGDATABASE"],
+    user=os.environ["PGUSER"],
+    password=os.environ["PGPASSWORD"],
+    sslmode=os.environ.get("PGSSLMODE", "require"),
+) as conn:
+    with conn.cursor() as cur:
+        cur.execute(
+            '''
+            INSERT INTO documents (tenant_id, source_uri, title, metadata)
+            VALUES (%s, %s, %s, %s)
+            RETURNING id
+            ''',
+            (
+                "contoso",
+                "https://storage.example/handbook.pdf",
+                "Employee handbook",
+                Jsonb({"department": "hr"}),
+            ),
+        )
+        document_id = cur.fetchone()[0]
+
+        cur.execute(
+            '''
+            INSERT INTO chunks
+                (document_id, tenant_id, chunk_no, content, metadata)
+            VALUES (%s, %s, %s, %s, %s)
+            ''',
+            (
+                document_id,
+                "contoso",
+                0,
+                "Meals over $50 require manager approval.",
+                Jsonb({"department": "hr"}),
+            ),
+        )
+
+        cur.execute(
+            '''
+            WITH q AS (
+                SELECT plainto_tsquery('english', %s) AS query
+            )
+            SELECT c.id, c.chunk_no, c.content,
+                   ts_rank(c.search_text, q.query) AS rank
+            FROM chunks AS c
+            CROSS JOIN q
+            WHERE c.tenant_id = %s
+              AND c.search_text @@ q.query
+            ORDER BY rank DESC
+            LIMIT 5
+            ''',
+            ("meal approval", "contoso"),
+        )
+
+        for row in cur.fetchall():
+            print(row)
+PY""",
 "code": r"""-- schema.sql - relational + JSONB + full-text indexes for AI document chunks.
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
@@ -675,21 +744,21 @@ az group delete -n rg-ai200-data --yes --no-wait""",
 "exam": [
  "On Azure Database for PostgreSQL Flexible Server, allow-list extensions with server parameter <code>azure.extensions</code> before running <code>CREATE EXTENSION vector</code> in the database.",
  "pgvector stores embeddings in <code>vector(n)</code>. Operators matter: <code>&lt;-&gt;</code> = L2 distance, <code>&lt;#&gt;</code> = negative inner product, <code>&lt;=&gt;</code> = cosine distance.",
- "Use <b>HNSW</b> for strong recall/latency without a training step; use <b>IVFFlat</b> when you can tune lists/probes after loading representative data. Both reduce compute versus exact scans.",
+ "Use <b>HNSW</b> for strong recall/latency without a training step; use <b>IVFFlat</b> when you can tune lists/probes after loading representative data. Azure PostgreSQL also supports <b>DiskANN</b> through the separate <code>pg_diskann</code> extension for very large, disk-backed vector sets.",
  "RAG retrieval should combine vector order with metadata filters in <code>WHERE</code> (tenant/security/category/date). Never retrieve across tenants and filter only in application code.",
  "Vector workloads are memory/CPU heavy. Size Flexible Server compute, memory, storage IOPS and connection pooling (<b>PgBouncer</b>) for concurrency, not just database size.",
 ],
-"prereq": "Lab 2.5 Flexible Server. Embeddings from Azure OpenAI or another model. Server restart may be required after changing extension or PgBouncer parameters.",
+"prereq": "Lab 2.5 Flexible Server. Embeddings from Azure OpenAI or another model. The built-in PgBouncer parameter is dynamic and does not require a restart.",
 "portal": [
  "##Allow-list pgvector",
- "Flexible Server \u2192 <b>Server parameters</b> \u2192 search <code>azure.extensions</code> \u2192 add <code>vector</code> to the comma-separated list \u2192 Save and restart if prompted.",
+ "Flexible Server \u2192 <b>Settings \u2192 Parameters</b> \u2192 search <code>azure.extensions</code> \u2192 include <code>vector</code> in the comma-separated list \u2192 Save.",
  "##Enable extension in the database",
  "Connect to database <code>aiapp</code> with <code>psql</code> and run <code>CREATE EXTENSION IF NOT EXISTS vector;</code>.",
  "##Create vector schema and indexes",
- "Run the SQL tab: create a <code>vector(1536)</code> column, B-tree metadata index and HNSW/IVFFlat vector index matching the distance operator you will query.",
+ "Run the SQL tab: create a <code>vector(n)</code> column, B-tree metadata index and HNSW/IVFFlat vector index matching the distance operator you will query. The readable sample uses four dimensions; production uses the embedding model's actual dimension.",
  "##Tune workload resources",
  "Server \u2192 <b>Compute + storage</b>: scale vCores/memory for vector index build and query concurrency; increase storage performance/IOPS for large corpora.",
- "Server parameters \u2192 enable <code>pgbouncer.enabled</code> for connection pooling when many app instances call the database.",
+ "Settings \u2192 <b>Parameters</b> \u2192 set <code>pgbouncer.enabled</code> to <code>true</code> when many app instances need connection pooling.",
  "##Retrieve for RAG",
  "Use the top K chunks from the metadata-filtered vector query as grounded context for the LLM prompt; include source fields for citations.",
 ],
@@ -698,23 +767,28 @@ PG=<your-postgres-server>
 DB=aiapp
 ADMIN=pgadmin
 
-# Azure PostgreSQL blocks extensions unless they are allow-listed first.
+# Preserve pgcrypto from Lab 2.5 while enabling pgvector.
 az postgres flexible-server parameter set -g $RG -s $PG \
-  -n azure.extensions -v vector
-az postgres flexible-server restart -g $RG -n $PG
+  -n azure.extensions -v pgcrypto,vector
 
-# Optional: built-in PgBouncer for high connection counts from app replicas.
+# Optional: built-in PgBouncer is dynamic; no restart is required.
 az postgres flexible-server parameter set -g $RG -s $PG \
   -n pgbouncer.enabled -v true
-az postgres flexible-server restart -g $RG -n $PG
 
 # Scale up for vector index builds / concurrent retrieval, then scale down if needed.
 az postgres flexible-server update -g $RG -n $PG \
   --tier GeneralPurpose --sku-name Standard_D4ds_v5 \
   --storage-size 256 --storage-auto-grow Enabled
 
+# Apply DDL through direct port 5432; the next command tests pooled port 6432.
+
 psql "host=$PG.postgres.database.azure.com port=5432 dbname=$DB user=$ADMIN password=$PGPASSWORD sslmode=require" \
-  -f pgvector-rag.sql""",
+  -f pgvector-rag.sql
+
+# Application connections use port 6432 to go through built-in PgBouncer.
+psql "host=$PG.postgres.database.azure.com port=6432 dbname=$DB user=$ADMIN sslmode=require" \
+  -c "SELECT count(*) FROM rag_chunks;"
+""",
 "code": r"""-- pgvector-rag.sql - semantic retrieval with tenant/metadata filters.
 CREATE EXTENSION IF NOT EXISTS vector;
 
@@ -725,7 +799,7 @@ CREATE TABLE IF NOT EXISTS rag_chunks (
     title       text NOT NULL,
     content     text NOT NULL,
     metadata    jsonb NOT NULL DEFAULT '{}'::jsonb,
-    embedding   vector(1536) NOT NULL,
+    embedding   vector(4) NOT NULL,
     created_at  timestamptz NOT NULL DEFAULT now()
 );
 
@@ -746,24 +820,51 @@ CREATE INDEX IF NOT EXISTS ix_rag_chunks_embedding_hnsw
 -- ANALYZE rag_chunks;
 -- SET ivfflat.probes = 10;
 
--- For HNSW recall/latency trade-off at query time:
-SET hnsw.ef_search = 80;
+DELETE FROM rag_chunks
+WHERE source_uri = 'lab://employee-handbook';
 
--- Replace the zero vector with the embedding of the user's question.
+INSERT INTO rag_chunks
+    (tenant_id, source_uri, title, content, metadata, embedding)
+VALUES
+    (
+        'contoso',
+        'lab://employee-handbook',
+        'Expense policy',
+        'Meals over $50 require manager approval.',
+        '{"department":"hr"}',
+        '[0.10,0.82,0.09,0.18]'
+    ),
+    (
+        'contoso',
+        'lab://employee-handbook',
+        'Benefits',
+        'Employees can enroll in benefits after 30 days.',
+        '{"department":"hr"}',
+        '[0.12,0.03,0.91,0.22]'
+    );
+
+-- Keep a query-specific HNSW setting within one transaction when PgBouncer
+-- uses transaction pooling.
+BEGIN;
+SET LOCAL hnsw.ef_search = 80;
+
 WITH q AS (
-    SELECT ('[' || array_to_string(array_fill(0.0::float8, ARRAY[1536]), ',') || ']')::vector AS embedding
+    SELECT '[0.11,0.78,0.11,0.20]'::vector(4) AS embedding
 )
 SELECT
     c.id,
     c.title,
     c.source_uri,
-    left(c.content, 300) AS context,
+    c.content AS context,
     1 - (c.embedding <=> q.embedding) AS cosine_similarity
-FROM rag_chunks c, q
+FROM rag_chunks AS c
+CROSS JOIN q
 WHERE c.tenant_id = 'contoso'
   AND c.metadata @> '{"department":"hr"}'::jsonb
 ORDER BY c.embedding <=> q.embedding
 LIMIT 5;
+
+COMMIT;
 
 -- RAG pattern in the app: embed question -> run this SQL -> pass context+sources to the model.
 -- Use a pool (Azure PgBouncer or psycopg_pool) so many app replicas do not exhaust max_connections.""",
@@ -773,14 +874,15 @@ LIMIT 5;
  "The operator and index opclass must match: cosine queries use <code>&lt;=&gt;</code> with <code>vector_cosine_ops</code>; L2 uses <code>&lt;-&gt;</code> with <code>vector_l2_ops</code>.",
  "IVFFlat indexes should be built after loading representative data; building too early or skipping <code>ANALYZE</code> hurts recall/performance.",
  "Connection pooling improves concurrency but does not reduce vector math cost. If CPU/memory are saturated, scale compute or reduce K/dimensions/candidate set.",
+ "The four-dimensional, two-row sample proves query shape, not index performance. Production uses the model's actual dimensions and representative data volume.",
 ],
 "cleanup": r"""# Optional cleanup inside the database:
 psql "host=<server>.postgres.database.azure.com port=5432 dbname=aiapp user=pgadmin password=$PGPASSWORD sslmode=require" \
   -c "DROP TABLE IF EXISTS rag_chunks;"
 
-# Optional server scale-down after index build:
+# Compute can scale down; allocated storage cannot be reduced in place.
 az postgres flexible-server update -g rg-ai200-data -n <postgres-server-name> \
-  --tier GeneralPurpose --sku-name Standard_D2ds_v5 --storage-size 128""",
+  --tier GeneralPurpose --sku-name Standard_D2ds_v5""",
 },
 # ---------------------------------------------------------------- 2.7
 {
@@ -815,20 +917,20 @@ REDIS=ai200redis$RANDOM
 az group create -n $RG -l $LOC
 az extension add -n redisenterprise --upgrade
 
-# Azure Managed Redis uses Redis Enterprise capabilities; RediSearch is enabled at creation.
-# Exact SKU names vary by region/tier. Use a small Enterprise-compatible in-memory SKU for labs.
+# Azure Managed Redis SKU; availability varies by region.
+# Omitting --no-database creates and configures the default database.
 az redisenterprise create -g $RG -n $REDIS -l $LOC \
-  --sku Enterprise_E10 --capacity 2
-
-# Create the default database with RediSearch. RediSearch requires Enterprise clustering policy.
-az redisenterprise database create -g $RG --cluster-name $REDIS -n default \
+  --sku Balanced_B1 \
   --client-protocol Encrypted --port 10000 \
   --clustering-policy EnterpriseCluster \
-  --module name=RediSearch
+  --eviction-policy NoEviction \
+  --modules name=RediSearch \
+  --access-keys-authentication Enabled \
+  --public-network-access Enabled
 
 export REDIS_HOST=$(az redisenterprise show -g $RG -n $REDIS --query hostName -o tsv)
 export REDIS_PORT=10000
-export REDIS_KEY=$(az redisenterprise database list-keys -g $RG --cluster-name $REDIS -n default \
+export REDIS_KEY=$(az redisenterprise database list-keys -g $RG --cluster-name $REDIS \
   --query primaryKey -o tsv)
 
 # Quick connectivity check if redis-cli is available:
@@ -928,4 +1030,3 @@ print(results)""",
 az group delete -n rg-ai200-data --yes --no-wait""",
 },
 ]
-
